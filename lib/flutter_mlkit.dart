@@ -32,7 +32,6 @@ class FlutterMlkit {
     await showDialog(
         context: context,
         builder: (BuildContext context) {
-          barcodeContext = context;
       return barcode;});
     return scannedText;
   }
