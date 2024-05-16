@@ -18,21 +18,22 @@ import 'vision_detector_views/selfie_segmenter_view.dart';
 import 'vision_detector_views/text_detector_view.dart';
 
 class FlutterMlkit {
-  static barcodeScan(context) async {
-    late BuildContext barcodeContext;
+  static Future<String> barcodeScan(context) async {
     final StreamController receiver = StreamController();
     late BarcodeScannerView barcode = BarcodeScannerView(receiver: receiver);
-    showDialog(
+    var scannedText = '';
+    Future.delayed(const Duration(milliseconds: 1000), () {
+      receiver.stream.listen((message) {
+        receiver.close();
+        scannedText = message;
+        Navigator.pop(context);
+      });
+    });
+    await showDialog(
         context: context,
         builder: (BuildContext context) {
           barcodeContext = context;
       return barcode;});
-
-    Future.delayed(Duration(milliseconds: 1000), () {
-      receiver.stream.listen((message) {
-        receiver.close();
-        Navigator.pop(barcodeContext, message);
-      });
-    });
+    return scannedText;
   }
 }
