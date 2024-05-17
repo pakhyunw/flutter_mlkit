@@ -3,6 +3,7 @@ import 'dart:io';
 import 'dart:typed_data';
 import 'package:camera/camera.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:google_mlkit_barcode_scanning/google_mlkit_barcode_scanning.dart';
 import 'package:image/image.dart' as img;
 import 'package:path_provider/path_provider.dart';
@@ -11,9 +12,9 @@ import 'detector_view.dart';
 import 'painters/barcode_detector_painter.dart';
 
 class BarcodeScannerView extends StatefulWidget {
-  const BarcodeScannerView(
-      {super.key,
-        required this.receiver});
+  const BarcodeScannerView({super.key,
+    required this.receiver});
+
   final StreamController receiver;
 
   @override
@@ -31,10 +32,8 @@ class BarcodeScannerViewState extends State<BarcodeScannerView> {
   late final StreamController _receiver;
 
 
-
-
   @override
-  void initState(){
+  void initState() {
     _receiver = widget.receiver;
     _customPaint = null;
     super.initState();
@@ -71,22 +70,40 @@ class BarcodeScannerViewState extends State<BarcodeScannerView> {
     });
     final barcodesOriginal = await _barcodeScanner.processImage(inputImage);
     List<Barcode> barcodes = [];
-    if(barcodesOriginal.isEmpty){
-      final imageBytes = inputImage.toJson()['bytes'];
-      final invertedBytes = _invertColors(imageBytes);
-      // Invert image colors
-      final invertedInputImage = InputImage.fromBytes(
-        bytes: invertedBytes,
-        metadata: InputImageMetadata(
-          size: inputImage.metadata?.size ?? Size(1024, 768),
-          rotation: inputImage.metadata?.rotation ?? InputImageRotation.rotation0deg,
-          format: inputImage.metadata?.format ?? InputImageFormat.nv21,
-          bytesPerRow: inputImage.metadata?.bytesPerRow ?? 0,
-        ),
-      );
+    if (barcodesOriginal.isEmpty) {
+      var imageBytes = inputImage.toJson()['bytes'];
+      late InputImage invertedInputImage;
+      if(imageBytes == null){
+        final file = File(inputImage.toJson()['path']);
+        final imageBytes = await file.readAsBytes();
+        final image = img.decodeImage(imageBytes);
+        if (image == null) {
+          print('Could not decode image.');
+          return;
+        }
+        var invertedImage = img.invert(image);
+        final jpgBytes = Uint8List.fromList(img.encodeJpg(invertedImage));
+        final invertedPath = '${file.path}_inverted.jpg';
+        final invertedFile = File(invertedPath);
+        await invertedFile.writeAsBytes(jpgBytes);
+        invertedInputImage = InputImage.fromFilePath('${file.path}_inverted.jpg');
+      } else {
+        final invertedBytes = _invertColors(imageBytes, inputImage.metadata);
+        // Invert image colors
+        invertedInputImage = InputImage.fromBytes(
+          bytes: invertedBytes,
+          metadata: InputImageMetadata(
+            size: inputImage.metadata?.size ?? Size(1024, 768),
+            rotation: inputImage.metadata?.rotation ??
+                InputImageRotation.rotation0deg,
+            format: inputImage.metadata?.format ?? InputImageFormat.nv21,
+            bytesPerRow: inputImage.metadata?.bytesPerRow ?? 0,
+          ),
+        );
+      }
 
-      // Process the inverted image
-      final barcodesInverted = await _barcodeScanner.processImage(invertedInputImage);
+      final barcodesInverted = await _barcodeScanner.processImage(
+          invertedInputImage);
 
       // Combine results from both images
       barcodes = barcodesInverted;
@@ -103,16 +120,15 @@ class BarcodeScannerViewState extends State<BarcodeScannerView> {
         _cameraLensDirection,
       );
       _customPaint = CustomPaint(painter: painter);
-      if(barcodes.isNotEmpty && !_isScanned){
+      if (barcodes.isNotEmpty && !_isScanned) {
         _canProcess = false;
         _isScanned = true;
         String code = '';
-        for(Barcode barcode in barcodes){
+        for (Barcode barcode in barcodes) {
           code += barcode.displayValue!;
         }
         _receiver.add(code);
       }
-
     } else {
       String text = 'Barcodes found: ${barcodes.length}\n\n';
       for (final barcode in barcodes) {
@@ -127,10 +143,99 @@ class BarcodeScannerViewState extends State<BarcodeScannerView> {
     }
   }
 
-  Uint8List _invertColors(Uint8List bytes) {
-    for (int i = 0; i < bytes.length; i++) {
-      bytes[i] = 255 - bytes[i];
+  Uint8List _invertColors(Uint8List bytes, InputImageMetadata? metadata) {
+    switch (metadata?.format) {
+      case InputImageFormat.nv21:
+        return _invertColorsNv21(bytes);
+      case InputImageFormat.yv12:
+        return _invertColorsYv12(bytes);
+      case InputImageFormat.yuv_420_888:
+        return _invertColorsYuv420888(
+            bytes, metadata!.size.width.toInt(), metadata.size.height.toInt());
+      case InputImageFormat.yuv420:
+        return _invertColorsYuv420(
+            bytes, metadata!.size.width.toInt(), metadata.size.height.toInt());
+      case InputImageFormat.bgra8888:
+      default:
+        return _invertColorsBgra8888(bytes);
     }
-    return bytes;
   }
+
+  Uint8List _invertColorsBgra8888(Uint8List bytes) {
+    final length = bytes.length;
+    final invertedBytes = Uint8List(length);
+    for (int i = 0; i < length; i += 4) {
+      invertedBytes[i] = 255 - bytes[i];       // B
+      invertedBytes[i + 1] = 255 - bytes[i + 1]; // G
+      invertedBytes[i + 2] = 255 - bytes[i + 2]; // R
+      invertedBytes[i + 3] = bytes[i + 3];       // A (unchanged)
+    }
+    return invertedBytes;
+  }
+  Uint8List _invertColorsYuv420(Uint8List bytes, int width, int height) {
+    final invertedBytes = Uint8List.fromList(bytes);
+    final frameSize = width * height;
+
+    // Invert Y values
+    for (int i = 0; i < frameSize; i++) {
+      invertedBytes[i] = 255 - invertedBytes[i];
+    }
+
+    // Invert UV values
+    for (int i = frameSize; i < invertedBytes.length; i++) {
+      invertedBytes[i] = 255 - invertedBytes[i];
+    }
+
+    return invertedBytes;
+  }
+  Uint8List _invertColorsYuv420888(Uint8List bytes, int width, int height) {
+    final invertedBytes = Uint8List.fromList(bytes);
+    final ySize = width * height;
+    final uvSize = ySize ~/ 4;
+
+    // Invert Y values
+    for (int i = 0; i < ySize; i++) {
+      invertedBytes[i] = 255 - invertedBytes[i];
+    }
+
+    // Invert U and V values
+    for (int i = ySize; i < ySize + uvSize * 2; i++) {
+      invertedBytes[i] = 255 - invertedBytes[i];
+    }
+
+    return invertedBytes;
+  }
+  Uint8List _invertColorsYv12(Uint8List bytes) {
+    final invertedBytes = Uint8List.fromList(bytes);
+    final frameSize = invertedBytes.length * 2 ~/ 3;
+
+    // Invert Y values
+    for (int i = 0; i < frameSize; i++) {
+      invertedBytes[i] = 255 - invertedBytes[i];
+    }
+
+    // Invert VU values
+    for (int i = frameSize; i < invertedBytes.length; i++) {
+      invertedBytes[i] = 255 - invertedBytes[i];
+    }
+
+    return invertedBytes;
+  }
+  Uint8List _invertColorsNv21(Uint8List bytes) {
+    final invertedBytes = Uint8List.fromList(bytes);
+    final frameSize = invertedBytes.length * 2 ~/ 3;
+
+    // Invert Y values
+    for (int i = 0; i < frameSize; i++) {
+      invertedBytes[i] = 255 - invertedBytes[i];
+    }
+
+    // Invert UV values
+    for (int i = frameSize; i < invertedBytes.length; i++) {
+      invertedBytes[i] = 255 - invertedBytes[i];
+    }
+
+    return invertedBytes;
+  }
+
 }

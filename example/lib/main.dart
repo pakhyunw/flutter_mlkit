@@ -40,6 +40,7 @@ class Home extends StatelessWidget {
                       onPressed: () async {
                         var barcode = await FlutterMlkit.barcodeScan(context);
                         print(barcode);
+                        barcode = '';
                       },
                       child: Text('test')),
                   // ExpansionTile(

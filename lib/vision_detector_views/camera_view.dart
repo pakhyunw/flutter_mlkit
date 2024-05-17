@@ -1,9 +1,11 @@
 import 'dart:io';
 
 import 'package:camera/camera.dart';
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:google_mlkit_commons/google_mlkit_commons.dart';
+import 'package:image_picker/image_picker.dart';
 
 class CameraView extends StatefulWidget {
   CameraView(
@@ -38,10 +40,14 @@ class _CameraViewState extends State<CameraView> {
   double _maxAvailableExposureOffset = 0.0;
   double _currentExposureOffset = 0.0;
   bool _changingCameraLens = false;
+  File? _image;
+  String? _path;
+  ImagePicker? _imagePicker;
 
   @override
   void initState() {
     super.initState();
+    _imagePicker = ImagePicker();
 
     _initialize();
   }
@@ -91,9 +97,18 @@ class _CameraViewState extends State<CameraView> {
                     child: widget.customPaint,
                   ),
           ),
-          _backButton(),
+          Positioned(
+            top:0,
+            child: Container(
+              width: MediaQuery.of(context).size.width,
+                color:Colors.black54, child:Row(mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children:[
+                _backButton(),
+                // _detectionViewModeToggle(),
+              ]
+            )),
+          ),
           _switchLiveCameraToggle(),
-          _detectionViewModeToggle(),
           _zoomControl(),
           _exposureControl(),
         ],
@@ -101,159 +116,160 @@ class _CameraViewState extends State<CameraView> {
     );
   }
 
-  Widget _backButton() => Positioned(
-        top: 40,
-        left: 8,
-        child: SizedBox(
-          height: 50.0,
-          width: 50.0,
-          child: FloatingActionButton(
-            heroTag: Object(),
-            onPressed: () => Navigator.of(context).pop(),
-            backgroundColor: Colors.black54,
-            child: Icon(
-              Icons.arrow_back_ios_outlined,
-              size: 20,
-            ),
-          ),
-        ),
-      );
+  Widget _backButton() => SizedBox(
+    height: 50.0,
+    width: 50.0,
+    child: GestureDetector(
+      onTap: () => Navigator.of(context).pop(),
+      child: Icon(
+        Icons.arrow_back_ios_outlined,
+        color: Colors.white,
+        size: 20,
+      ),
+    ),
+  );
 
-  Widget _detectionViewModeToggle() => Positioned(
-        bottom: 8,
-        left: 8,
-        child: SizedBox(
-          height: 50.0,
-          width: 50.0,
-          child: FloatingActionButton(
-            heroTag: Object(),
-            onPressed: widget.onDetectorViewModeChanged,
-            backgroundColor: Colors.black54,
-            child: Icon(
-              Icons.photo_library_outlined,
-              size: 25,
-            ),
-          ),
-        ),
-      );
+  Widget _detectionViewModeToggle() => SizedBox(
+    height: 50.0,
+    width: 50.0,
+    child: GestureDetector(
+      onTap: ()=>_getImage(ImageSource.gallery),
+      child: Icon(
+        Icons.photo_library_outlined,
+        color:Colors.white,
+        size: 25,
+      ),
+    ),
+  );
 
-  Widget _switchLiveCameraToggle() => Positioned(
-        bottom: 8,
-        right: 8,
-        child: SizedBox(
-          height: 50.0,
-          width: 50.0,
-          child: FloatingActionButton(
-            heroTag: Object(),
-            onPressed: _switchLiveCamera,
-            backgroundColor: Colors.black54,
-            child: Icon(
-              Platform.isIOS
-                  ? Icons.flip_camera_ios_outlined
-                  : Icons.flip_camera_android_outlined,
-              size: 25,
-            ),
-          ),
-        ),
-      );
-
-  Widget _zoomControl() => Positioned(
-        bottom: 16,
-        left: 0,
-        right: 0,
-        child: Align(
-          alignment: Alignment.bottomCenter,
+  Widget _switchLiveCameraToggle() => Visibility(
+    visible: false,
+    child: Positioned(
+          bottom: 8,
+          right: 8,
           child: SizedBox(
-            width: 250,
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              crossAxisAlignment: CrossAxisAlignment.center,
-              children: [
-                Expanded(
-                  child: Slider(
-                    value: _currentZoomLevel,
-                    min: _minAvailableZoom,
-                    max: _maxAvailableZoom,
-                    activeColor: Colors.white,
-                    inactiveColor: Colors.white30,
-                    onChanged: (value) async {
-                      setState(() {
-                        _currentZoomLevel = value;
-                      });
-                      await _controller?.setZoomLevel(value);
-                    },
+            height: 50.0,
+            width: 50.0,
+            child: FloatingActionButton(
+              heroTag: Object(),
+              onPressed: _switchLiveCamera,
+              backgroundColor: Colors.black54,
+              child: Icon(
+                Platform.isIOS
+                    ? Icons.flip_camera_ios_outlined
+                    : Icons.flip_camera_android_outlined,
+                color:Colors.white,
+
+                size: 25,
+              ),
+            ),
+          ),
+        ),
+  );
+
+  Widget _zoomControl() => Visibility(
+    visible: false,
+    child: Positioned(
+          bottom: 16,
+          left: 0,
+          right: 0,
+          child: Align(
+            alignment: Alignment.bottomCenter,
+            child: SizedBox(
+              width: 250,
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                crossAxisAlignment: CrossAxisAlignment.center,
+                children: [
+                  Expanded(
+                    child: Slider(
+                      value: _currentZoomLevel,
+                      min: _minAvailableZoom,
+                      max: _maxAvailableZoom,
+                      activeColor: Colors.white,
+                      inactiveColor: Colors.white30,
+                      onChanged: (value) async {
+                        setState(() {
+                          _currentZoomLevel = value;
+                        });
+                        await _controller?.setZoomLevel(value);
+                      },
+                    ),
                   ),
-                ),
-                Container(
-                  width: 50,
-                  decoration: BoxDecoration(
-                    color: Colors.black54,
-                    borderRadius: BorderRadius.circular(10.0),
-                  ),
-                  child: Padding(
-                    padding: const EdgeInsets.all(8.0),
-                    child: Center(
-                      child: Text(
-                        '${_currentZoomLevel.toStringAsFixed(1)}x',
-                        style: TextStyle(color: Colors.white),
+                  Container(
+                    width: 50,
+                    decoration: BoxDecoration(
+                      color: Colors.black54,
+                      borderRadius: BorderRadius.circular(10.0),
+                    ),
+                    child: Padding(
+                      padding: const EdgeInsets.all(8.0),
+                      child: Center(
+                        child: Text(
+                          '${_currentZoomLevel.toStringAsFixed(1)}x',
+                          style: TextStyle(color: Colors.white),
+                        ),
                       ),
                     ),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
           ),
         ),
-      );
+  );
 
-  Widget _exposureControl() => Positioned(
-        top: 40,
-        right: 8,
-        child: ConstrainedBox(
-          constraints: BoxConstraints(
-            maxHeight: 250,
-          ),
-          child: Column(children: [
-            Container(
-              width: 55,
-              decoration: BoxDecoration(
-                color: Colors.black54,
-                borderRadius: BorderRadius.circular(10.0),
-              ),
-              child: Padding(
-                padding: const EdgeInsets.all(8.0),
-                child: Center(
-                  child: Text(
-                    '${_currentExposureOffset.toStringAsFixed(1)}x',
-                    style: TextStyle(color: Colors.white),
-                  ),
-                ),
-              ),
+  Widget _exposureControl() => Visibility(
+    visible: false,
+    child: Positioned(
+          top: 40,
+          right: 8,
+          child: ConstrainedBox(
+            constraints: BoxConstraints(
+              maxHeight: 250,
             ),
-            Expanded(
-              child: RotatedBox(
-                quarterTurns: 3,
-                child: SizedBox(
-                  height: 30,
-                  child: Slider(
-                    value: _currentExposureOffset,
-                    min: _minAvailableExposureOffset,
-                    max: _maxAvailableExposureOffset,
-                    activeColor: Colors.white,
-                    inactiveColor: Colors.white30,
-                    onChanged: (value) async {
-                      setState(() {
-                        _currentExposureOffset = value;
-                      });
-                      await _controller?.setExposureOffset(value);
-                    },
+            child: Column(children: [
+              Container(
+                width: 55,
+                decoration: BoxDecoration(
+                  color: Colors.black54,
+                  borderRadius: BorderRadius.circular(10.0),
+                ),
+                child: Padding(
+                  padding: const EdgeInsets.all(8.0),
+                  child: Center(
+                    child: Text(
+                      '${_currentExposureOffset.toStringAsFixed(1)}x',
+                      style: TextStyle(color: Colors.white),
+                    ),
                   ),
                 ),
               ),
-            )
-          ]),
+              Expanded(
+                child: RotatedBox(
+                  quarterTurns: 3,
+                  child: SizedBox(
+                    height: 30,
+                    child: Slider(
+                      value: _currentExposureOffset,
+                      min: _minAvailableExposureOffset,
+                      max: _maxAvailableExposureOffset,
+                      activeColor: Colors.white,
+                      inactiveColor: Colors.white30,
+                      onChanged: (value) async {
+                        setState(() {
+                          _currentExposureOffset = value;
+                        });
+                        await _controller?.setExposureOffset(value);
+                      },
+                    ),
+                  ),
+                ),
+              )
+            ]),
+          ),
         ),
-      );
+  );
 
   Future _startLiveFeed() async {
     final camera = _cameras[_cameraIndex];
@@ -380,5 +396,25 @@ class _CameraViewState extends State<CameraView> {
         bytesPerRow: plane.bytesPerRow, // used only in iOS
       ),
     );
+  }
+
+  Future _getImage(ImageSource source) async {
+    setState(() {
+      _image = null;
+      _path = null;
+    });
+    final pickedFile = await _imagePicker?.pickImage(source: source);
+    if (pickedFile != null) {
+      _processFile(pickedFile.path);
+    }
+  }
+
+  Future _processFile(String path) async {
+    setState(() {
+      _image = File(path);
+    });
+    _path = path;
+    final inputImage = InputImage.fromFilePath(path);
+    widget.onImage(inputImage);
   }
 }
