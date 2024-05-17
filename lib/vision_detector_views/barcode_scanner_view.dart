@@ -35,6 +35,7 @@ class BarcodeScannerViewState extends State<BarcodeScannerView> {
   @override
   void initState() {
     _receiver = widget.receiver;
+    _text = '';
     _customPaint = null;
     super.initState();
   }
