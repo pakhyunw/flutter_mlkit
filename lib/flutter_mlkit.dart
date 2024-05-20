@@ -19,21 +19,26 @@ import 'vision_detector_views/text_detector_view.dart';
 
 class FlutterMlkit {
   static Future<String> barcodeScan(context) async {
-    await Future.delayed(const Duration(milliseconds: 500));
-    final StreamController receiver = StreamController();
-    late BarcodeScannerView barcode = BarcodeScannerView(receiver: receiver);
-    var scannedText = '';
-    Future.delayed(const Duration(milliseconds: 1000), () {
-      receiver.stream.listen((message) {
-        receiver.close();
-        scannedText = message;
-        Navigator.pop(context);
+    try {
+      await Future.delayed(const Duration(milliseconds: 500));
+      final StreamController receiver = StreamController();
+      late BarcodeScannerView barcode = BarcodeScannerView(receiver: receiver);
+      var scannedText = '';
+      Future.delayed(const Duration(milliseconds: 1000), () {
+        receiver.stream.listen((message) {
+          receiver.close();
+          scannedText = message;
+          Navigator.pop(context);
+        });
       });
-    });
-    await showDialog(
-        context: context,
-        builder: (BuildContext context) {
-      return barcode;});
-    return scannedText;
+      await showDialog(
+          context: context,
+          builder: (BuildContext context) {
+            return barcode;});
+      return scannedText;
+    } catch (e){
+      return '';
+    }
+
   }
 }
