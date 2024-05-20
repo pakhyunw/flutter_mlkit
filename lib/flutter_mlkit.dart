@@ -19,7 +19,7 @@ import 'vision_detector_views/text_detector_view.dart';
 
 class FlutterMlkit {
   static Future<String> barcodeScan(context) async {
-    await Future.delayed(const Duration(milliseconds: 1000));
+    await Future.delayed(const Duration(milliseconds: 500));
     final StreamController receiver = StreamController();
     late BarcodeScannerView barcode = BarcodeScannerView(receiver: receiver);
     var scannedText = '';
