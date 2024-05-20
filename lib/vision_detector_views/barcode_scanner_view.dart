@@ -128,6 +128,8 @@ class BarcodeScannerViewState extends State<BarcodeScannerView> {
         for (Barcode barcode in barcodes) {
           code += barcode.displayValue!;
         }
+        _text = '';
+        _barcodeScanner.close();
         _receiver.add(code);
       }
     } else {
