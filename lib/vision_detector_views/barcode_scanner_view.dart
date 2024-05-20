@@ -12,8 +12,7 @@ import 'detector_view.dart';
 import 'painters/barcode_detector_painter.dart';
 
 class BarcodeScannerView extends StatefulWidget {
-  const BarcodeScannerView({super.key,
-    required this.receiver});
+  const BarcodeScannerView({super.key, required this.receiver});
 
   final StreamController receiver;
 
@@ -30,7 +29,7 @@ class BarcodeScannerViewState extends State<BarcodeScannerView> {
   var _cameraLensDirection = CameraLensDirection.back;
   var _isScanned = false;
   late final StreamController _receiver;
-
+  bool _init = false;
 
   @override
   void initState() {
@@ -62,6 +61,10 @@ class BarcodeScannerViewState extends State<BarcodeScannerView> {
   }
 
   Future<void> _processImage(InputImage inputImage) async {
+    if (!_init) {
+      _init = true;
+      return;
+    }
     if (!_canProcess) return;
     if (_isBusy) return;
     _isBusy = true;
@@ -74,7 +77,7 @@ class BarcodeScannerViewState extends State<BarcodeScannerView> {
     if (barcodesOriginal.isEmpty) {
       var imageBytes = inputImage.toJson()['bytes'];
       late InputImage invertedInputImage;
-      if(imageBytes == null){
+      if (imageBytes == null) {
         final file = File(inputImage.toJson()['path']);
         final imageBytes = await file.readAsBytes();
         final image = img.decodeImage(imageBytes);
@@ -87,7 +90,8 @@ class BarcodeScannerViewState extends State<BarcodeScannerView> {
         final invertedPath = '${file.path}_inverted.jpg';
         final invertedFile = File(invertedPath);
         await invertedFile.writeAsBytes(jpgBytes);
-        invertedInputImage = InputImage.fromFilePath('${file.path}_inverted.jpg');
+        invertedInputImage =
+            InputImage.fromFilePath('${file.path}_inverted.jpg');
       } else {
         final invertedBytes = _invertColors(imageBytes, inputImage.metadata);
         // Invert image colors
@@ -103,8 +107,8 @@ class BarcodeScannerViewState extends State<BarcodeScannerView> {
         );
       }
 
-      final barcodesInverted = await _barcodeScanner.processImage(
-          invertedInputImage);
+      final barcodesInverted =
+          await _barcodeScanner.processImage(invertedInputImage);
 
       // Combine results from both images
       barcodes = barcodesInverted;
@@ -128,8 +132,6 @@ class BarcodeScannerViewState extends State<BarcodeScannerView> {
         for (Barcode barcode in barcodes) {
           code += barcode.displayValue!;
         }
-        _text = '';
-        _barcodeScanner.close();
         _receiver.add(code);
       }
     } else {
@@ -168,13 +170,14 @@ class BarcodeScannerViewState extends State<BarcodeScannerView> {
     final length = bytes.length;
     final invertedBytes = Uint8List(length);
     for (int i = 0; i < length; i += 4) {
-      invertedBytes[i] = 255 - bytes[i];       // B
+      invertedBytes[i] = 255 - bytes[i]; // B
       invertedBytes[i + 1] = 255 - bytes[i + 1]; // G
       invertedBytes[i + 2] = 255 - bytes[i + 2]; // R
-      invertedBytes[i + 3] = bytes[i + 3];       // A (unchanged)
+      invertedBytes[i + 3] = bytes[i + 3]; // A (unchanged)
     }
     return invertedBytes;
   }
+
   Uint8List _invertColorsYuv420(Uint8List bytes, int width, int height) {
     final invertedBytes = Uint8List.fromList(bytes);
     final frameSize = width * height;
@@ -191,6 +194,7 @@ class BarcodeScannerViewState extends State<BarcodeScannerView> {
 
     return invertedBytes;
   }
+
   Uint8List _invertColorsYuv420888(Uint8List bytes, int width, int height) {
     final invertedBytes = Uint8List.fromList(bytes);
     final ySize = width * height;
@@ -208,6 +212,7 @@ class BarcodeScannerViewState extends State<BarcodeScannerView> {
 
     return invertedBytes;
   }
+
   Uint8List _invertColorsYv12(Uint8List bytes) {
     final invertedBytes = Uint8List.fromList(bytes);
     final frameSize = invertedBytes.length * 2 ~/ 3;
@@ -224,6 +229,7 @@ class BarcodeScannerViewState extends State<BarcodeScannerView> {
 
     return invertedBytes;
   }
+
   Uint8List _invertColorsNv21(Uint8List bytes) {
     final invertedBytes = Uint8List.fromList(bytes);
     final frameSize = invertedBytes.length * 2 ~/ 3;
@@ -240,5 +246,4 @@ class BarcodeScannerViewState extends State<BarcodeScannerView> {
 
     return invertedBytes;
   }
-
 }
