@@ -3,19 +3,7 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 
-import 'nlp_detector_views/entity_extraction_view.dart';
-import 'nlp_detector_views/language_identifier_view.dart';
-import 'nlp_detector_views/language_translator_view.dart';
-import 'nlp_detector_views/smart_reply_view.dart';
 import 'vision_detector_views/barcode_scanner_view.dart';
-import 'vision_detector_views/digital_ink_recognizer_view.dart';
-import 'vision_detector_views/face_detector_view.dart';
-import 'vision_detector_views/face_mesh_detector_view.dart';
-import 'vision_detector_views/label_detector_view.dart';
-import 'vision_detector_views/object_detector_view.dart';
-import 'vision_detector_views/pose_detector_view.dart';
-import 'vision_detector_views/selfie_segmenter_view.dart';
-import 'vision_detector_views/text_detector_view.dart';
 
 class FlutterMlkit {
   static Future<String> barcodeScan(context) async {

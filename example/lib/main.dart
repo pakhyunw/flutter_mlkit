@@ -43,33 +43,6 @@ class Home extends StatelessWidget {
                         barcode = '';
                       },
                       child: Text('test')),
-                  // ExpansionTile(
-                  //   title: const Text('Vision APIs'),
-                  //   children: [
-                  //     CustomCard('Barcode Scanning', FlutterMlkit.barcodeScannerView),
-                  //     CustomCard('Face Detection', FlutterMlkit.faceDetectorView),
-                  //     CustomCard('Face Mesh Detection', FlutterMlkit.faceMeshDetectorView),
-                  //     CustomCard('Image Labeling', FlutterMlkit.imageLabelView),
-                  //     CustomCard('Object Detection', FlutterMlkit.objectDetectorView),
-                  //     CustomCard('Text Recognition', FlutterMlkit.textRecognizerView),
-                  //     CustomCard('Digital Ink Recognition', FlutterMlkit.digitalInkView),
-                  //     CustomCard('Pose Detection', FlutterMlkit.poseDetectorView),
-                  //     CustomCard('Selfie Segmentation', FlutterMlkit.selfieSegmenterView),
-                  //   ],
-                  // ),
-                  // SizedBox(
-                  //   height: 20,
-                  // ),
-                  // ExpansionTile(
-                  //   title: const Text('Natural Language APIs'),
-                  //   children: [
-                  //     CustomCard('Language ID', FlutterMlkit.languageIdentifierView),
-                  //     CustomCard(
-                  //         'On-device Translation', FlutterMlkit.languageTranslatorView),
-                  //     CustomCard('Smart Reply', FlutterMlkit.smartReplyView),
-                  //     CustomCard('Entity Extraction', FlutterMlkit.entityExtractionView),
-                  //   ],
-                  // ),
                 ],
               ),
             ),
