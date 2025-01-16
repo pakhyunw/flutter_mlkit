@@ -29,4 +29,18 @@ class FlutterMlkit {
     }
 
   }
+
+  static Future<void> continuesBarcodeScan(context, StreamController receiver) async {
+    try {
+      await Future.delayed(const Duration(milliseconds: 500));
+      late BarcodeScannerView barcode = BarcodeScannerView(receiver: receiver);
+      await showDialog(
+          context: context,
+          builder: (BuildContext context) {
+            return barcode;});
+    } catch (e){
+      debugPrint(e.toString());
+    }
+
+  }
 }
