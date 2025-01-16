@@ -135,7 +135,9 @@ class BarcodeScannerViewState extends State<BarcodeScannerView> {
         for (Barcode barcode in barcodes) {
           code += barcode.displayValue!;
         }
-        _receiver.add(code);
+        if(!_receiver.isClosed){
+          _receiver.add(code);
+        }
         if(_isContinue){
           _canProcess = true;
           _isScanned = false;
