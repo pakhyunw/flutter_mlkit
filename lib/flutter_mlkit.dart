@@ -38,6 +38,7 @@ class FlutterMlkit {
           context: context,
           builder: (BuildContext context) {
             return barcode;});
+      receiver.close();
     } catch (e){
       debugPrint(e.toString());
     }
