@@ -12,9 +12,10 @@ import 'detector_view.dart';
 import 'painters/barcode_detector_painter.dart';
 
 class BarcodeScannerView extends StatefulWidget {
-  const BarcodeScannerView({super.key, required this.receiver});
+  const BarcodeScannerView({super.key, required this.receiver, required this.isContinue});
 
   final StreamController receiver;
+  final bool isContinue;
 
   @override
   BarcodeScannerViewState createState() => BarcodeScannerViewState();
@@ -29,11 +30,13 @@ class BarcodeScannerViewState extends State<BarcodeScannerView> {
   var _cameraLensDirection = CameraLensDirection.back;
   var _isScanned = false;
   late final StreamController _receiver;
+  late final bool _isContinue;
   bool _init = false;
 
   @override
   void initState() {
     _receiver = widget.receiver;
+    _isContinue = widget.isContinue;
     _text = '';
     _customPaint = null;
     super.initState();
@@ -133,6 +136,10 @@ class BarcodeScannerViewState extends State<BarcodeScannerView> {
           code += barcode.displayValue!;
         }
         _receiver.add(code);
+        if(_isContinue){
+          _canProcess = true;
+          _isScanned = false;
+        }
       }
     } else {
       String text = 'Barcodes found: ${barcodes.length}\n\n';
