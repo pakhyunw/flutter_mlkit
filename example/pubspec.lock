@@ -5,10 +5,10 @@ packages:
     dependency: transitive
     description:
       name: archive
-      sha256: cb6a278ef2dbb298455e1a713bda08524a175630ec643a242c399c932a0a1f7d
+      sha256: "6199c74e3db4fbfbd04f66d739e72fe11c8a8957d5f219f1f4482dbde6420b5a"
       url: "https://pub.dev"
     source: hosted
-    version: "3.6.1"
+    version: "4.0.2"
   async:
     dependency: transitive
     description:
@@ -37,26 +37,26 @@ packages:
     dependency: transitive
     description:
       name: camera_android
-      sha256: "19b7226387218864cb2388e1ad5db7db50d065222f5511254b03fc397dd21a5e"
+      sha256: "007c57cdcace4751014071e3d42f2eb8a64a519254abed35b714223d81d66234"
       url: "https://pub.dev"
     source: hosted
-    version: "0.10.9+17"
+    version: "0.10.10"
   camera_avfoundation:
     dependency: transitive
     description:
       name: camera_avfoundation
-      sha256: "2e4c568f70e406ccb87376bc06b53d2f5bebaab71e2fbcc1a950e31449381bcf"
+      sha256: "3f81ee3e88a79b0b010f0233d42625926299551b05d5dc995267a0b35bc33247"
       url: "https://pub.dev"
     source: hosted
-    version: "0.9.17+5"
+    version: "0.9.18"
   camera_platform_interface:
     dependency: transitive
     description:
       name: camera_platform_interface
-      sha256: b3ede1f171532e0d83111fe0980b46d17f1aa9788a07a2fbed07366bbdbb9061
+      sha256: "953e7baed3a7c8fae92f7200afeb2be503ff1a17c3b4e4ed7b76f008c2810a31"
       url: "https://pub.dev"
     source: hosted
-    version: "2.8.0"
+    version: "2.9.0"
   camera_web:
     dependency: transitive
     description:
@@ -177,10 +177,10 @@ packages:
     dependency: transitive
     description:
       name: flutter_plugin_android_lifecycle
-      sha256: "9b78450b89f059e96c9ebb355fa6b3df1d6b330436e0b885fb49594c41721398"
+      sha256: "615a505aef59b151b46bbeef55b36ce2b6ed299d160c51d84281946f0aa0ce0e"
       url: "https://pub.dev"
     source: hosted
-    version: "2.0.23"
+    version: "2.0.24"
   flutter_test:
     dependency: "direct dev"
     description: flutter
@@ -227,10 +227,10 @@ packages:
     dependency: transitive
     description:
       name: image
-      sha256: f31d52537dc417fdcde36088fdf11d191026fd5e4fae742491ebd40e5a8bea7d
+      sha256: "8346ad4b5173924b5ddddab782fc7d8a6300178c8b1dc427775405a01701c4a6"
       url: "https://pub.dev"
     source: hosted
-    version: "4.3.0"
+    version: "4.5.2"
   image_picker:
     dependency: transitive
     description:
@@ -243,10 +243,10 @@ packages:
     dependency: transitive
     description:
       name: image_picker_android
-      sha256: fa8141602fde3f7e2f81dbf043613eb44dfa325fa0bcf93c0f142c9f7a2c193e
+      sha256: b62d34a506e12bb965e824b6db4fbf709ee4589cf5d3e99b45ab2287b008ee0c
       url: "https://pub.dev"
     source: hosted
-    version: "0.8.12+18"
+    version: "0.8.12+20"
   image_picker_for_web:
     dependency: transitive
     description:
@@ -259,10 +259,10 @@ packages:
     dependency: transitive
     description:
       name: image_picker_ios
-      sha256: "4f0568120c6fcc0aaa04511cb9f9f4d29fc3d0139884b1d06be88dcec7641d6b"
+      sha256: "05da758e67bc7839e886b3959848aa6b44ff123ab4b28f67891008afe8ef9100"
       url: "https://pub.dev"
     source: hosted
-    version: "0.8.12+1"
+    version: "0.8.12+2"
   image_picker_linux:
     dependency: transitive
     description:
@@ -283,10 +283,10 @@ packages:
     dependency: transitive
     description:
       name: image_picker_platform_interface
-      sha256: "9ec26d410ff46f483c5519c29c02ef0e02e13a543f882b152d4bfd2f06802f80"
+      sha256: "886d57f0be73c4b140004e78b9f28a8914a09e50c2d816bdd0520051a71236a0"
       url: "https://pub.dev"
     source: hosted
-    version: "2.10.0"
+    version: "2.10.1"
   image_picker_windows:
     dependency: transitive
     description:
@@ -439,6 +439,14 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "2.1.8"
+  posix:
+    dependency: transitive
+    description:
+      name: posix
+      sha256: a0117dc2167805aa9125b82eee515cc891819bac2f538c83646d355b16f58b9a
+      url: "https://pub.dev"
+    source: hosted
+    version: "6.0.1"
   sky_engine:
     dependency: transitive
     description: flutter
@@ -472,10 +480,10 @@ packages:
     dependency: transitive
     description:
       name: stream_transform
-      sha256: "14a00e794c7c11aa145a170587321aedce29769c08d7f58b1d141da75e3b1c6f"
+      sha256: ad47125e588cfd37a9a7f86c7d6356dde8dfe89d071d293f80ca9e9273a33871
       url: "https://pub.dev"
     source: hosted
-    version: "2.1.0"
+    version: "2.1.1"
   string_scanner:
     dependency: transitive
     description:
