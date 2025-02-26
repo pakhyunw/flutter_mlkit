@@ -55,6 +55,7 @@ class _CameraViewState extends State<CameraView> {
   void _initialize() async {
     if (_cameras.isEmpty) {
       _cameras = await availableCameras();
+
     }
     for (var i = 0; i < _cameras.length; i++) {
       if (_cameras[i].lensDirection == widget.initialCameraLensDirection) {
@@ -82,6 +83,7 @@ class _CameraViewState extends State<CameraView> {
     if (_cameras.isEmpty) return Container();
     if (_controller == null) return Container();
     if (_controller?.value.isInitialized == false) return Container();
+
     return ColoredBox(
       color: Colors.black,
       child: Stack(
@@ -168,7 +170,7 @@ class _CameraViewState extends State<CameraView> {
   );
 
   Widget _zoomControl() => Visibility(
-    visible: false,
+    visible: true,
     child: Positioned(
           bottom: 16,
           left: 0,
