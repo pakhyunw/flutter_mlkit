@@ -35,7 +35,7 @@ class _CameraViewState extends State<CameraView> {
   int _cameraIndex = -1;
   double _currentZoomLevel = 1.0;
   double _minAvailableZoom = 1.0;
-  double _maxAvailableZoom = 1.0;
+  double _maxAvailableZoom = 3.0;
   double _minAvailableExposureOffset = 0.0;
   double _maxAvailableExposureOffset = 0.0;
   double _currentExposureOffset = 0.0;
@@ -292,9 +292,9 @@ class _CameraViewState extends State<CameraView> {
         _currentZoomLevel = value;
         _minAvailableZoom = value;
       });
-      _controller?.getMaxZoomLevel().then((value) {
-        _maxAvailableZoom = value;
-      });
+      // _controller?.getMaxZoomLevel().then((value) {
+      //   _maxAvailableZoom = value;
+      // });
       _currentExposureOffset = 0.0;
       _controller?.getMinExposureOffset().then((value) {
         _minAvailableExposureOffset = value;
