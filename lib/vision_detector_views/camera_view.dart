@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'dart:math';
 
 import 'package:camera/camera.dart';
 import 'package:flutter/cupertino.dart';
@@ -40,6 +41,7 @@ class _CameraViewState extends State<CameraView> {
   double _maxAvailableExposureOffset = 0.0;
   double _currentExposureOffset = 0.0;
   bool _changingCameraLens = false;
+  bool _flashStatus = false;
   File? _image;
   String? _path;
   ImagePicker? _imagePicker;
@@ -94,18 +96,34 @@ class _CameraViewState extends State<CameraView> {
                 ? Center(
                     child: const Text('Changing camera lens'),
                   )
-                : CameraPreview(
-                    _controller!,
-                    child: widget.customPaint,
+                : SizedBox(
+              width: _controller!.value.previewSize!.width,
+              height: _controller!.value.previewSize!.height / 1.5, // ✅ 정사각형 프레임
+              child: ClipRect(
+                child: FittedBox(
+                  fit: BoxFit.cover, // ✅ 중심 맞추고 위아래 잘라냄
+                  child: SizedBox(
+                    width: _controller!.value.previewSize!.height,
+                    height: _controller!.value.previewSize!.width,
+                    child: CameraPreview(
+                      _controller!,
+                      child: widget.customPaint,
+                    ),
                   ),
+                ),
+              ),
+            ),
           ),
           Positioned(
             top:0,
             child: Container(
               width: MediaQuery.of(context).size.width,
-                color:Colors.black54, child:Row(mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                color:Colors.black54, child:
+            Row(mainAxisAlignment: MainAxisAlignment.start,
+              crossAxisAlignment: CrossAxisAlignment.center,
               children:[
                 _backButton(),
+                const SizedBox(height:56, child: Center(child: Text('코드스캔',style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize:17),))),
                 // _detectionViewModeToggle(),
               ]
             )),
@@ -113,6 +131,9 @@ class _CameraViewState extends State<CameraView> {
           _switchLiveCameraToggle(),
           _zoomControl(),
           _exposureControl(),
+          _flash()
+
+
         ],
       ),
     );
@@ -143,6 +164,24 @@ class _CameraViewState extends State<CameraView> {
       ),
     ),
   );
+
+  Widget _flash() => Container(
+    height: 50.0,
+    width: 50.0,
+    child: GestureDetector(
+      onTap: ()=>toggleFlash(),
+      child: Icon(
+        _flashStatus? Icons.flash_on : Icons.flash_off,
+        color:Colors.white,
+        size: 25,
+      ),
+    ),
+  );
+
+  toggleFlash(){
+    _flashStatus = !_flashStatus;
+    _controller?.setFlashMode(_flashStatus? FlashMode.torch : FlashMode.off);
+  }
 
   Widget _switchLiveCameraToggle() => Visibility(
     visible: false,
@@ -344,6 +383,24 @@ class _CameraViewState extends State<CameraView> {
 
   InputImage? _inputImageFromCameraImage(CameraImage image) {
     if (_controller == null) return null;
+
+    final width = image.width;
+    final height = image.height;
+
+    final size = min(width, height); // 정사각형 한 변
+    final left = (width - size) ~/ 2;
+    final top = (height - size) ~/ 2;
+
+    // Y plane만 가져오기 (흑백 이미지 기반)
+    final yPlane = image.planes[0];
+
+    // 정사각형 crop
+    final croppedBytes = Uint8List(size * size);
+    for (int y = 0; y < size; y++) {
+      final srcOffset = (top + y) * yPlane.bytesPerRow + left;
+      final dstOffset = y * size;
+      croppedBytes.setRange(dstOffset.floor(), dstOffset.floor() + size, yPlane.bytes, srcOffset);
+    }
 
     // get image rotation
     // it is used in android to convert the InputImage from Dart to Java: https://github.com/flutter-ml/google_ml_kit_flutter/blob/master/packages/google_mlkit_commons/android/src/main/java/com/google_mlkit_commons/InputImageConverter.java

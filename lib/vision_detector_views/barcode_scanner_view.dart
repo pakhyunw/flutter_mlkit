@@ -75,6 +75,7 @@ class BarcodeScannerViewState extends State<BarcodeScannerView> {
     setState(() {
       _text = '';
     });
+
     final barcodesOriginal = await _barcodeScanner.processImage(inputImage);
     List<Barcode> barcodes = [];
     if (barcodesOriginal.isEmpty) {
