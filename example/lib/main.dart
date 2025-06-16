@@ -38,9 +38,7 @@ class Home extends StatelessWidget {
                 children: [
                   ElevatedButton(
                       onPressed: () async {
-                        var barcode = await FlutterMlkit.barcodeScan(context);
-                        print(barcode);
-                        barcode = '';
+                        await FlutterMlkit.barcodeScan(context,(value)=>print(value));
                       },
                       child: Text('test')),
                 ],

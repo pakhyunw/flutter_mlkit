@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:io';
 import 'dart:math';
 
@@ -8,17 +9,21 @@ import 'package:flutter/services.dart';
 import 'package:google_mlkit_commons/google_mlkit_commons.dart';
 import 'package:image_picker/image_picker.dart';
 
+import '../flutter_mlkit.dart';
+
 class CameraView extends StatefulWidget {
   CameraView(
       {Key? key,
       required this.customPaint,
       required this.onImage,
+        required this.receiver,
       this.onCameraFeedReady,
       this.onDetectorViewModeChanged,
       this.onCameraLensDirectionChanged,
       this.initialCameraLensDirection = CameraLensDirection.back})
       : super(key: key);
 
+  final StreamController<ScanResult> receiver;
   final CustomPaint? customPaint;
   final Function(InputImage inputImage, bool isContinue) onImage;
   final VoidCallback? onCameraFeedReady;
@@ -42,10 +47,12 @@ class _CameraViewState extends State<CameraView> {
   double _currentExposureOffset = 0.0;
   bool _changingCameraLens = false;
   bool _flashStatus = false;
-  bool isContinue = false;
+  bool _isContinue = false;
+  int _scanCount = 0;
   File? _image;
   String? _path;
   ImagePicker? _imagePicker;
+  bool _isGallery = false;
 
   @override
   void initState() {
@@ -68,6 +75,9 @@ class _CameraViewState extends State<CameraView> {
     if (_cameraIndex != -1) {
       _startLiveFeed();
     }
+    widget.receiver.stream.listen((ScanResult resultData){
+        _scanCount++;
+    });
   }
 
   @override
@@ -221,12 +231,12 @@ class _CameraViewState extends State<CameraView> {
             const Text('단일 스캔', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize:16),),
             const SizedBox(width: 10),
             Switch(
-              value: isContinue,
+              value: _isContinue,
               activeColor: Colors.white,
               activeTrackColor: Colors.blue,
               onChanged: (value) {
                 setState(() {
-                  isContinue = value;
+                  _isContinue = value;
 
                 });
               },
@@ -421,22 +431,31 @@ class _CameraViewState extends State<CameraView> {
   }
 
   _countButton(){
-    return Positioned(
-      bottom: 30,
-        child: Container(
-          height: 56,
-            width: MediaQuery.of(context).size.width - 30,
-            decoration: BoxDecoration(
-              color: Colors.blue,
-              borderRadius: BorderRadius.circular(25.0),
-            ),
-            child: const Center(child: Text('스캔 완료', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 18),))));
+    return Visibility(
+      visible: _scanCount > 0,
+      child: Positioned(
+        bottom: 30,
+          child: GestureDetector(
+
+            onTap: ()=>_backButton(),
+            child: Container(
+              height: 56,
+                width: MediaQuery.of(context).size.width - 30,
+                decoration: BoxDecoration(
+                  color: Colors.blue,
+                  borderRadius: BorderRadius.circular(25.0),
+                ),
+                child: Center(child: Text('$_scanCount개 스캔 완료', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 18),))),
+          )),
+    );
   }
 
   void _processCameraImage(CameraImage image) {
+    if(_isGallery) return;
+
     final inputImage = _inputImageFromCameraImage(image);
     if (inputImage == null) return;
-    widget.onImage(inputImage, isContinue);
+    widget.onImage(inputImage, _isContinue);
   }
 
   final _orientations = {
@@ -506,7 +525,11 @@ class _CameraViewState extends State<CameraView> {
     );
   }
 
+
+
+
   Future _getImage(ImageSource source) async {
+    _isGallery = true;
     setState(() {
       _image = null;
       _path = null;
@@ -517,12 +540,15 @@ class _CameraViewState extends State<CameraView> {
     }
   }
 
+
+
   Future _processFile(String path) async {
     setState(() {
       _image = File(path);
     });
     _path = path;
     final inputImage = InputImage.fromFilePath(path);
-    widget.onImage(inputImage, isContinue);
+    widget.onImage(inputImage, _isContinue);
+    _isGallery = false;
   }
 }

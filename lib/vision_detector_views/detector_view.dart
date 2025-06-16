@@ -1,5 +1,8 @@
+import 'dart:async';
+
 import 'package:camera/camera.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_mlkit/flutter_mlkit.dart';
 import 'package:google_mlkit_commons/google_mlkit_commons.dart';
 
 import 'camera_view.dart';
@@ -12,6 +15,7 @@ class DetectorView extends StatefulWidget {
     Key? key,
     required this.title,
     required this.onImage,
+    required this.receiver,
     this.customPaint,
     this.text,
     this.initialDetectionMode = DetectorViewMode.liveFeed,
@@ -26,6 +30,7 @@ class DetectorView extends StatefulWidget {
   final String? text;
   final DetectorViewMode initialDetectionMode;
   final Function(InputImage inputImage, bool isContinue) onImage;
+  final StreamController<ScanResult> receiver;
   final Function()? onCameraFeedReady;
   final Function(DetectorViewMode mode)? onDetectorViewModeChanged;
   final Function(CameraLensDirection direction)? onCameraLensDirectionChanged;
@@ -50,6 +55,7 @@ class _DetectorViewState extends State<DetectorView> {
         ? CameraView(
             customPaint: widget.customPaint,
             onImage: widget.onImage,
+            receiver: widget.receiver,
             onCameraFeedReady: widget.onCameraFeedReady,
             onDetectorViewModeChanged: _onDetectorViewModeChanged,
             initialCameraLensDirection: widget.initialCameraLensDirection,

@@ -4,6 +4,7 @@ import 'dart:typed_data';
 import 'package:camera/camera.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_mlkit/flutter_mlkit.dart';
 import 'package:google_mlkit_barcode_scanning/google_mlkit_barcode_scanning.dart';
 import 'package:image/image.dart' as img;
 import 'package:path_provider/path_provider.dart';
@@ -14,7 +15,7 @@ import 'painters/barcode_detector_painter.dart';
 class BarcodeScannerView extends StatefulWidget {
   const BarcodeScannerView({super.key, required this.receiver});
 
-  final StreamController receiver;
+  final StreamController<ScanResult> receiver;
 
   @override
   BarcodeScannerViewState createState() => BarcodeScannerViewState();
@@ -28,8 +29,11 @@ class BarcodeScannerViewState extends State<BarcodeScannerView> {
   String? _text;
   var _cameraLensDirection = CameraLensDirection.back;
   var _isScanned = false;
-  late final StreamController _receiver;
+  late final StreamController<ScanResult> _receiver;
+  final StreamController<ScanResult> countReceiver = StreamController();
   bool _init = false;
+  Set _results = {};
+
 
   @override
   void initState() {
@@ -53,6 +57,7 @@ class BarcodeScannerViewState extends State<BarcodeScannerView> {
     return DetectorView(
       title: 'Barcode Scanner',
       customPaint: _customPaint,
+      receiver: countReceiver,
       text: _text,
       onImage: _processImage,
       initialCameraLensDirection: _cameraLensDirection,
@@ -134,7 +139,12 @@ class BarcodeScannerViewState extends State<BarcodeScannerView> {
           code += barcode.displayValue!;
         }
         if(!_receiver.isClosed){
-          _receiver.add(code);
+          if(!_results.contains(code)){
+            _results.add(code);
+            _receiver.add(ScanResult(message: code, isContinue: isContinue));
+            countReceiver.add(ScanResult(message: code, isContinue: isContinue));
+          }
+
         }
         if(isContinue){
           _canProcess = true;
@@ -145,9 +155,16 @@ class BarcodeScannerViewState extends State<BarcodeScannerView> {
       String text = 'Barcodes found: ${barcodes.length}\n\n';
       for (final barcode in barcodes) {
         text += 'Barcode: ${barcode.rawValue}\n\n';
+        if(!_receiver.isClosed){
+          if(!_results.contains(barcode.rawValue)){
+            _results.add(barcode.rawValue);
+            _receiver.add(ScanResult(message: barcode.rawValue!, isContinue: isContinue));
+            countReceiver.add(ScanResult(message: barcode.rawValue!, isContinue: isContinue));
+          }
+        }
       }
       _text = text;
-      print(_text);
+
       _customPaint = null;
     }
     _isBusy = false;
