@@ -25,7 +25,7 @@ class DetectorView extends StatefulWidget {
   final CustomPaint? customPaint;
   final String? text;
   final DetectorViewMode initialDetectionMode;
-  final Function(InputImage inputImage) onImage;
+  final Function(InputImage inputImage, bool isContinue) onImage;
   final Function()? onCameraFeedReady;
   final Function(DetectorViewMode mode)? onDetectorViewModeChanged;
   final Function(CameraLensDirection direction)? onCameraLensDirectionChanged;

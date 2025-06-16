@@ -20,7 +20,7 @@ class CameraView extends StatefulWidget {
       : super(key: key);
 
   final CustomPaint? customPaint;
-  final Function(InputImage inputImage) onImage;
+  final Function(InputImage inputImage, bool isContinue) onImage;
   final VoidCallback? onCameraFeedReady;
   final VoidCallback? onDetectorViewModeChanged;
   final Function(CameraLensDirection direction)? onCameraLensDirectionChanged;
@@ -42,6 +42,7 @@ class _CameraViewState extends State<CameraView> {
   double _currentExposureOffset = 0.0;
   bool _changingCameraLens = false;
   bool _flashStatus = false;
+  bool isContinue = false;
   File? _image;
   String? _path;
   ImagePicker? _imagePicker;
@@ -57,7 +58,6 @@ class _CameraViewState extends State<CameraView> {
   void _initialize() async {
     if (_cameras.isEmpty) {
       _cameras = await availableCameras();
-
     }
     for (var i = 0; i < _cameras.length; i++) {
       if (_cameras[i].lensDirection == widget.initialCameraLensDirection) {
@@ -89,103 +89,157 @@ class _CameraViewState extends State<CameraView> {
     return ColoredBox(
       color: Colors.black,
       child: Stack(
+        alignment: Alignment.topCenter,
         fit: StackFit.expand,
         children: <Widget>[
-          Center(
-            child: _changingCameraLens
-                ? Center(
-                    child: const Text('Changing camera lens'),
-                  )
-                : SizedBox(
-              width: _controller!.value.previewSize!.width,
-              height: _controller!.value.previewSize!.height / 1.5, // ✅ 정사각형 프레임
-              child: ClipRect(
-                child: FittedBox(
-                  fit: BoxFit.cover, // ✅ 중심 맞추고 위아래 잘라냄
-                  child: SizedBox(
-                    width: _controller!.value.previewSize!.height,
-                    height: _controller!.value.previewSize!.width,
-                    child: CameraPreview(
-                      _controller!,
-                      child: widget.customPaint,
-                    ),
-                  ),
-                ),
-              ),
-            ),
+          Positioned(
+            top: 0,
+            child: Container(
+                width: MediaQuery.of(context).size.width,
+                color: Colors.black54,
+                child: Row(
+                    mainAxisAlignment: MainAxisAlignment.start,
+                    crossAxisAlignment: CrossAxisAlignment.center,
+                    children: [
+                      _backButton(),
+                      const SizedBox(
+                          height: 56,
+                          child: Center(
+                              child: Text(
+                                '코드스캔',
+                                style: TextStyle(
+                                    color: Colors.white,
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 17),
+                              ))),
+                      // _detectionViewModeToggle(),
+                    ])),
           ),
           Positioned(
-            top:0,
-            child: Container(
-              width: MediaQuery.of(context).size.width,
-                color:Colors.black54, child:
-            Row(mainAxisAlignment: MainAxisAlignment.start,
-              crossAxisAlignment: CrossAxisAlignment.center,
-              children:[
-                _backButton(),
-                const SizedBox(height:56, child: Center(child: Text('코드스캔',style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize:17),))),
-                // _detectionViewModeToggle(),
-              ]
-            )),
+            top: 56,
+            child: Center(
+              child: _changingCameraLens
+                  ? Center(
+                      child: const Text('Changing camera lens'),
+                    )
+                  : Container(
+                      width: _controller!.value.previewSize!.width / 3,
+                      height: _controller!.value.previewSize!.height / 1.5,
+                      child: ClipRect(
+                        child: FittedBox(
+                          fit: BoxFit.cover, // ✅ 중심 맞추고 위아래 잘라냄
+                          child: SizedBox(
+                            width: _controller!.value.previewSize!.height,
+                            height: _controller!.value.previewSize!.width,
+                            child: CameraPreview(
+                              _controller!,
+                              child: widget.customPaint,
+                          ),),
+                        ),
+                      ),
+                                            ),
+            ),
           ),
+          _flash(),
+          _detectionViewModeToggle(),
           _switchLiveCameraToggle(),
           _zoomControl(),
           _exposureControl(),
-          _flash()
-
-
+          _continueSwitch(),
+          _countButton(),
         ],
       ),
     );
   }
 
   Widget _backButton() => SizedBox(
-    height: 50.0,
-    width: 50.0,
+        height: 50.0,
+        width: 50.0,
+        child: GestureDetector(
+          onTap: () => Navigator.of(context).pop(),
+          child: Icon(
+            Icons.arrow_back_ios_outlined,
+            color: Colors.white,
+            size: 20,
+          ),
+        ),
+      );
+
+  Widget _detectionViewModeToggle() => Positioned(
+    top: _controller!.value.previewSize!.height / 1.5 - 20,
     child: GestureDetector(
-      onTap: () => Navigator.of(context).pop(),
-      child: Icon(
-        Icons.arrow_back_ios_outlined,
-        color: Colors.white,
-        size: 20,
+      onTap: () => _getImage(ImageSource.gallery),
+      child: Container(
+        padding: EdgeInsets.only(left: 15, right: 15, top:10, bottom:10),
+        decoration: BoxDecoration(borderRadius: BorderRadius.circular(50),color: Colors.black38,),
+        
+        child: Row(
+          children: [
+            Icon(
+              Icons.photo_outlined,
+              color: Colors.white,
+              size: 25,
+            ),
+            Text('앨범', style: TextStyle(color: Colors.white),)
+          ],
+        ),
       ),
     ),
   );
 
-  Widget _detectionViewModeToggle() => SizedBox(
-    height: 50.0,
-    width: 50.0,
-    child: GestureDetector(
-      onTap: ()=>_getImage(ImageSource.gallery),
-      child: Icon(
-        Icons.photo_library_outlined,
-        color:Colors.white,
-        size: 25,
-      ),
-    ),
+  Widget _flash() => Positioned(
+    top: 66,
+    right: 10,
+    child: Container(
+          height: 50.0,
+          width: 50.0,
+
+          decoration: BoxDecoration(borderRadius: BorderRadius.circular(50),color: Colors.black38,),
+          child: IconButton(
+            onPressed: () => toggleFlash(),
+            icon: Icon(
+              _flashStatus ? Icons.flash_on : Icons.flash_off,
+              color: Colors.white,
+              size: 25,
+            ),
+          ),
+        ),
   );
 
-  Widget _flash() => Container(
-    height: 50.0,
-    width: 50.0,
-    child: GestureDetector(
-      onTap: ()=>toggleFlash(),
-      child: Icon(
-        _flashStatus? Icons.flash_on : Icons.flash_off,
-        color:Colors.white,
-        size: 25,
-      ),
-    ),
-  );
-
-  toggleFlash(){
-    _flashStatus = !_flashStatus;
-    _controller?.setFlashMode(_flashStatus? FlashMode.torch : FlashMode.off);
+  toggleFlash() {
+    setState(() {
+      _flashStatus = !_flashStatus;
+    });
+    _controller?.setFlashMode(_flashStatus ? FlashMode.torch : FlashMode.off);
   }
 
+  Widget _continueSwitch() => Positioned(
+    top: _controller!.value.previewSize!.height / 1.5 + 66,
+    child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            const Text('단일 스캔', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize:16),),
+            const SizedBox(width: 10),
+            Switch(
+              value: isContinue,
+              activeColor: Colors.white,
+              activeTrackColor: Colors.blue,
+              onChanged: (value) {
+                setState(() {
+                  isContinue = value;
+
+                });
+              },
+            ),
+            const SizedBox(width: 10),
+           const Text('연속 스캔', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize:16)),
+          ],
+        ),
+  );
+
   Widget _switchLiveCameraToggle() => Visibility(
-    visible: false,
-    child: Positioned(
+        visible: false,
+        child: Positioned(
           bottom: 8,
           right: 8,
           child: SizedBox(
@@ -199,25 +253,23 @@ class _CameraViewState extends State<CameraView> {
                 Platform.isIOS
                     ? Icons.flip_camera_ios_outlined
                     : Icons.flip_camera_android_outlined,
-                color:Colors.white,
-
+                color: Colors.white,
                 size: 25,
               ),
             ),
           ),
         ),
-  );
+      );
 
   Widget _zoomControl() => Visibility(
-    visible: true,
-    child: Positioned(
-          bottom: 16,
-          left: 0,
-          right: 0,
+        visible: true,
+        child: Positioned(
+          top: _controller!.value.previewSize!.height / 1.5 - 20,
+          right: 10,
           child: Align(
             alignment: Alignment.bottomCenter,
             child: SizedBox(
-              width: 250,
+              width: 150,
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 crossAxisAlignment: CrossAxisAlignment.center,
@@ -247,7 +299,7 @@ class _CameraViewState extends State<CameraView> {
                       padding: const EdgeInsets.all(8.0),
                       child: Center(
                         child: Text(
-                          '${_currentZoomLevel.toStringAsFixed(1)}x',
+                          '${_currentZoomLevel.toStringAsFixed(0)}x',
                           style: TextStyle(color: Colors.white),
                         ),
                       ),
@@ -258,11 +310,11 @@ class _CameraViewState extends State<CameraView> {
             ),
           ),
         ),
-  );
+      );
 
   Widget _exposureControl() => Visibility(
-    visible: false,
-    child: Positioned(
+        visible: false,
+        child: Positioned(
           top: 40,
           right: 8,
           child: ConstrainedBox(
@@ -310,7 +362,7 @@ class _CameraViewState extends State<CameraView> {
             ]),
           ),
         ),
-  );
+      );
 
   Future _startLiveFeed() async {
     final camera = _cameras[_cameraIndex];
@@ -368,10 +420,23 @@ class _CameraViewState extends State<CameraView> {
     setState(() => _changingCameraLens = false);
   }
 
+  _countButton(){
+    return Positioned(
+      bottom: 30,
+        child: Container(
+          height: 56,
+            width: MediaQuery.of(context).size.width - 30,
+            decoration: BoxDecoration(
+              color: Colors.blue,
+              borderRadius: BorderRadius.circular(25.0),
+            ),
+            child: const Center(child: Text('스캔 완료', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 18),))));
+  }
+
   void _processCameraImage(CameraImage image) {
     final inputImage = _inputImageFromCameraImage(image);
     if (inputImage == null) return;
-    widget.onImage(inputImage);
+    widget.onImage(inputImage, isContinue);
   }
 
   final _orientations = {
@@ -383,24 +448,6 @@ class _CameraViewState extends State<CameraView> {
 
   InputImage? _inputImageFromCameraImage(CameraImage image) {
     if (_controller == null) return null;
-
-    final width = image.width;
-    final height = image.height;
-
-    final size = min(width, height); // 정사각형 한 변
-    final left = (width - size) ~/ 2;
-    final top = (height - size) ~/ 2;
-
-    // Y plane만 가져오기 (흑백 이미지 기반)
-    final yPlane = image.planes[0];
-
-    // 정사각형 crop
-    final croppedBytes = Uint8List(size * size);
-    for (int y = 0; y < size; y++) {
-      final srcOffset = (top + y) * yPlane.bytesPerRow + left;
-      final dstOffset = y * size;
-      croppedBytes.setRange(dstOffset.floor(), dstOffset.floor() + size, yPlane.bytes, srcOffset);
-    }
 
     // get image rotation
     // it is used in android to convert the InputImage from Dart to Java: https://github.com/flutter-ml/google_ml_kit_flutter/blob/master/packages/google_mlkit_commons/android/src/main/java/com/google_mlkit_commons/InputImageConverter.java
@@ -415,7 +462,7 @@ class _CameraViewState extends State<CameraView> {
       rotation = InputImageRotationValue.fromRawValue(sensorOrientation);
     } else if (Platform.isAndroid) {
       var rotationCompensation =
-          _orientations[_controller!.value.deviceOrientation];
+      _orientations[_controller!.value.deviceOrientation];
       if (rotationCompensation == null) return null;
       if (camera.lensDirection == CameraLensDirection.front) {
         // front-facing
@@ -431,8 +478,10 @@ class _CameraViewState extends State<CameraView> {
     if (rotation == null) return null;
     // print('final rotation: $rotation');
 
+
     // get image format
     final format = InputImageFormatValue.fromRawValue(image.format.raw);
+
     // validate format depending on platform
     // only supported formats:
     // * nv21 for Android
@@ -474,6 +523,6 @@ class _CameraViewState extends State<CameraView> {
     });
     _path = path;
     final inputImage = InputImage.fromFilePath(path);
-    widget.onImage(inputImage);
+    widget.onImage(inputImage, isContinue);
   }
 }

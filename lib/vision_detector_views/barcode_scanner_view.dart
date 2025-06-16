@@ -12,10 +12,9 @@ import 'detector_view.dart';
 import 'painters/barcode_detector_painter.dart';
 
 class BarcodeScannerView extends StatefulWidget {
-  const BarcodeScannerView({super.key, required this.receiver, required this.isContinue});
+  const BarcodeScannerView({super.key, required this.receiver});
 
   final StreamController receiver;
-  final bool isContinue;
 
   @override
   BarcodeScannerViewState createState() => BarcodeScannerViewState();
@@ -30,13 +29,11 @@ class BarcodeScannerViewState extends State<BarcodeScannerView> {
   var _cameraLensDirection = CameraLensDirection.back;
   var _isScanned = false;
   late final StreamController _receiver;
-  late final bool _isContinue;
   bool _init = false;
 
   @override
   void initState() {
     _receiver = widget.receiver;
-    _isContinue = widget.isContinue;
     _text = '';
     _customPaint = null;
     super.initState();
@@ -63,7 +60,7 @@ class BarcodeScannerViewState extends State<BarcodeScannerView> {
     );
   }
 
-  Future<void> _processImage(InputImage inputImage) async {
+  Future<void> _processImage(InputImage inputImage, bool isContinue) async {
     if (!_init) {
       _init = true;
       return;
@@ -139,7 +136,7 @@ class BarcodeScannerViewState extends State<BarcodeScannerView> {
         if(!_receiver.isClosed){
           _receiver.add(code);
         }
-        if(_isContinue){
+        if(isContinue){
           _canProcess = true;
           _isScanned = false;
         }
@@ -150,6 +147,7 @@ class BarcodeScannerViewState extends State<BarcodeScannerView> {
         text += 'Barcode: ${barcode.rawValue}\n\n';
       }
       _text = text;
+      print(_text);
       _customPaint = null;
     }
     _isBusy = false;

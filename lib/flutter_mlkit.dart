@@ -10,7 +10,7 @@ class FlutterMlkit {
     try {
       await Future.delayed(const Duration(milliseconds: 500));
       final StreamController receiver = StreamController();
-      late BarcodeScannerView barcode = BarcodeScannerView(receiver: receiver, isContinue: false);
+      late BarcodeScannerView barcode = BarcodeScannerView(receiver: receiver);
       var scannedText = '';
       Future.delayed(const Duration(milliseconds: 1000), () {
         receiver.stream.listen((message) {
@@ -26,20 +26,6 @@ class FlutterMlkit {
       return scannedText;
     } catch (e){
       return '';
-    }
-
-  }
-
-  static Future<void> continuesBarcodeScan(context, StreamController receiver) async {
-    try {
-      await Future.delayed(const Duration(milliseconds: 500));
-      late BarcodeScannerView barcode = BarcodeScannerView(receiver: receiver, isContinue: true);
-      await showDialog(
-          context: context,
-          builder: (BuildContext context) {
-            return barcode;});
-    } catch (e){
-      debugPrint(e.toString());
     }
 
   }
