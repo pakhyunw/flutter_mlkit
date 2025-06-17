@@ -10,11 +10,11 @@ dependencies:
   flutter:
     sdk: flutter
   image_picker: ^1.0.2
-  camera: ^0.10.2+1
+  camera: ^0.11.1
+  camera_avfoundation: 0.9.19+1
   path: ^1.8.2
   path_provider: ^2.1.0
   image: ^4.1.7
-
   google_mlkit_barcode_scanning: ^0.14.1
 
 dev_dependencies:
