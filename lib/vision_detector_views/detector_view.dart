@@ -32,7 +32,7 @@ class DetectorView extends StatefulWidget {
   final bool isContinue;
   final DetectorViewMode initialDetectionMode;
   final Function(InputImage inputImage, bool isContinue) onImage;
-  final StreamController<ScanResult> receiver;
+  final StreamController<BarcodeScanResult> receiver;
   final Function()? onCameraFeedReady;
   final Function(DetectorViewMode mode)? onDetectorViewModeChanged;
   final Function(CameraLensDirection direction)? onCameraLensDirectionChanged;

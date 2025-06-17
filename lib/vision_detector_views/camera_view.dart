@@ -24,7 +24,7 @@ class CameraView extends StatefulWidget {
       this.initialCameraLensDirection = CameraLensDirection.back})
       : super(key: key);
 
-  final StreamController<ScanResult> receiver;
+  final StreamController<BarcodeScanResult> receiver;
   final CustomPaint? customPaint;
   final bool isContinue;
   final Function(InputImage inputImage, bool isContinue) onImage;
@@ -79,7 +79,7 @@ class _CameraViewState extends State<CameraView> {
     if (_cameraIndex != -1) {
       _startLiveFeed();
     }
-    widget.receiver.stream.listen((ScanResult resultData) {
+    widget.receiver.stream.listen((BarcodeScanResult resultData) {
       _scanCount++;
     });
   }

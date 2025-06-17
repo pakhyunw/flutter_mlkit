@@ -15,7 +15,7 @@ import 'painters/barcode_detector_painter.dart';
 class BarcodeScannerView extends StatefulWidget {
   const BarcodeScannerView({super.key, required this.receiver, required this.isContinue});
 
-  final StreamController<ScanResult> receiver;
+  final StreamController<BarcodeScanResult> receiver;
   final bool isContinue;
 
   @override
@@ -30,8 +30,8 @@ class BarcodeScannerViewState extends State<BarcodeScannerView> {
   String? _text;
   var _cameraLensDirection = CameraLensDirection.back;
   var _isScanned = false;
-  late final StreamController<ScanResult> _receiver;
-  final StreamController<ScanResult> _countReceiver = StreamController();
+  late final StreamController<BarcodeScanResult> _receiver;
+  final StreamController<BarcodeScanResult> _countReceiver = StreamController();
   bool _init = false;
   Set _results = {};
 
@@ -143,8 +143,8 @@ class BarcodeScannerViewState extends State<BarcodeScannerView> {
         if(!_receiver.isClosed){
           if(!_results.contains(code)){
             _results.add(code);
-            _receiver.add(ScanResult(message: code, isContinue: isContinue));
-            _countReceiver.add(ScanResult(message: code, isContinue: isContinue));
+            _receiver.add(BarcodeScanResult(message: code, isContinue: isContinue));
+            _countReceiver.add(BarcodeScanResult(message: code, isContinue: isContinue));
           }
 
         }
@@ -160,8 +160,8 @@ class BarcodeScannerViewState extends State<BarcodeScannerView> {
         if(!_receiver.isClosed){
           if(!_results.contains(barcode.rawValue)){
             _results.add(barcode.rawValue);
-            _receiver.add(ScanResult(message: barcode.rawValue!, isContinue: isContinue));
-            _countReceiver.add(ScanResult(message: barcode.rawValue!, isContinue: isContinue));
+            _receiver.add(BarcodeScanResult(message: barcode.rawValue!, isContinue: isContinue));
+            _countReceiver.add(BarcodeScanResult(message: barcode.rawValue!, isContinue: isContinue));
           }
         }
       }
