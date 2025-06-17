@@ -13,9 +13,10 @@ import 'detector_view.dart';
 import 'painters/barcode_detector_painter.dart';
 
 class BarcodeScannerView extends StatefulWidget {
-  const BarcodeScannerView({super.key, required this.receiver});
+  const BarcodeScannerView({super.key, required this.receiver, required this.isContinue});
 
   final StreamController<ScanResult> receiver;
+  final bool isContinue;
 
   @override
   BarcodeScannerViewState createState() => BarcodeScannerViewState();
@@ -30,7 +31,7 @@ class BarcodeScannerViewState extends State<BarcodeScannerView> {
   var _cameraLensDirection = CameraLensDirection.back;
   var _isScanned = false;
   late final StreamController<ScanResult> _receiver;
-  final StreamController<ScanResult> countReceiver = StreamController();
+  final StreamController<ScanResult> _countReceiver = StreamController();
   bool _init = false;
   Set _results = {};
 
@@ -52,12 +53,6 @@ class BarcodeScannerViewState extends State<BarcodeScannerView> {
     _isScanned = false;
     _text = '';
     _barcodeScanner.close();
-    SystemChrome.setPreferredOrientations([
-      DeviceOrientation.portraitUp,
-      DeviceOrientation.portraitDown,
-      DeviceOrientation.landscapeLeft,
-      DeviceOrientation.landscapeRight,
-    ]);
     super.dispose();
   }
 
@@ -66,7 +61,8 @@ class BarcodeScannerViewState extends State<BarcodeScannerView> {
     return DetectorView(
       title: 'Barcode Scanner',
       customPaint: _customPaint,
-      receiver: countReceiver,
+      receiver: _countReceiver,
+      isContinue: widget.isContinue,
       text: _text,
       onImage: _processImage,
       initialCameraLensDirection: _cameraLensDirection,
@@ -151,7 +147,7 @@ class BarcodeScannerViewState extends State<BarcodeScannerView> {
           if(!_results.contains(code)){
             _results.add(code);
             _receiver.add(ScanResult(message: code, isContinue: isContinue));
-            countReceiver.add(ScanResult(message: code, isContinue: isContinue));
+            _countReceiver.add(ScanResult(message: code, isContinue: isContinue));
           }
 
         }
@@ -168,7 +164,7 @@ class BarcodeScannerViewState extends State<BarcodeScannerView> {
           if(!_results.contains(barcode.rawValue)){
             _results.add(barcode.rawValue);
             _receiver.add(ScanResult(message: barcode.rawValue!, isContinue: isContinue));
-            countReceiver.add(ScanResult(message: barcode.rawValue!, isContinue: isContinue));
+            _countReceiver.add(ScanResult(message: barcode.rawValue!, isContinue: isContinue));
           }
         }
       }

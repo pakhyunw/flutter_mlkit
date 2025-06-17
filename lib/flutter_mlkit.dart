@@ -6,11 +6,11 @@ import 'package:flutter/material.dart';
 import 'vision_detector_views/barcode_scanner_view.dart';
 
 class FlutterMlkit {
-  static Future<void> barcodeScan(context, Function result) async {
+  static Future<void> barcodeScan(context, Function result, {bool isContinue = false}) async {
     try {
       await Future.delayed(const Duration(milliseconds: 500));
       final StreamController<ScanResult> receiver = StreamController();
-      late BarcodeScannerView barcode = BarcodeScannerView(receiver: receiver);
+      late BarcodeScannerView barcode = BarcodeScannerView(receiver: receiver, isContinue:isContinue);
       var scannedText = '';
       Future.delayed(const Duration(milliseconds: 1000), () {
         receiver.stream.listen((ScanResult resultData) {

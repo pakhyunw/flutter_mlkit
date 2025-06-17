@@ -17,6 +17,7 @@ class CameraView extends StatefulWidget {
       required this.customPaint,
       required this.onImage,
       required this.receiver,
+        required this.isContinue,
       this.onCameraFeedReady,
       this.onDetectorViewModeChanged,
       this.onCameraLensDirectionChanged,
@@ -25,6 +26,7 @@ class CameraView extends StatefulWidget {
 
   final StreamController<ScanResult> receiver;
   final CustomPaint? customPaint;
+  final bool isContinue;
   final Function(InputImage inputImage, bool isContinue) onImage;
   final VoidCallback? onCameraFeedReady;
   final VoidCallback? onDetectorViewModeChanged;
@@ -47,17 +49,19 @@ class _CameraViewState extends State<CameraView> {
   double _currentExposureOffset = 0.0;
   bool _changingCameraLens = false;
   bool _flashStatus = false;
-  bool _isContinue = false;
+  bool _isContinueScan = false;
   int _scanCount = 0;
   File? _image;
   String? _path;
   ImagePicker? _imagePicker;
   bool _isGallery = false;
+  bool? _isContinue;
 
   @override
   void initState() {
     super.initState();
     _imagePicker = ImagePicker();
+    _isContinue = widget.isContinue;
 
     _initialize();
   }
@@ -231,38 +235,41 @@ class _CameraViewState extends State<CameraView> {
     _controller?.setFlashMode(_flashStatus ? FlashMode.torch : FlashMode.off);
   }
 
-  Widget _continueSwitch() => Positioned(
-        top: _controller!.value.previewSize!.height / 1.5 + 66,
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            const Text(
-              '단일 스캔',
-              style: TextStyle(
-                  color: Colors.white,
-                  fontWeight: FontWeight.bold,
-                  fontSize: 16),
-            ),
-            const SizedBox(width: 10),
-            Switch(
-              value: _isContinue,
-              activeColor: Colors.white,
-              activeTrackColor: Colors.blue,
-              onChanged: (value) {
-                setState(() {
-                  _isContinue = value;
-                });
-              },
-            ),
-            const SizedBox(width: 10),
-            const Text('연속 스캔',
+  Widget _continueSwitch() => Visibility(
+    visible: _isContinue ?? false,
+    child: Positioned(
+          top: _controller!.value.previewSize!.height / 1.5 + 66,
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              const Text(
+                '단일 스캔',
                 style: TextStyle(
                     color: Colors.white,
                     fontWeight: FontWeight.bold,
-                    fontSize: 16)),
-          ],
+                    fontSize: 16),
+              ),
+              const SizedBox(width: 10),
+              Switch(
+                value: _isContinueScan,
+                activeColor: Colors.white,
+                activeTrackColor: Colors.blue,
+                onChanged: (value) {
+                  setState(() {
+                    _isContinueScan = value;
+                  });
+                },
+              ),
+              const SizedBox(width: 10),
+              const Text('연속 스캔',
+                  style: TextStyle(
+                      color: Colors.white,
+                      fontWeight: FontWeight.bold,
+                      fontSize: 16)),
+            ],
+          ),
         ),
-      );
+  );
 
   Widget _switchLiveCameraToggle() => Visibility(
         visible: false,
@@ -478,7 +485,7 @@ class _CameraViewState extends State<CameraView> {
 
     final inputImage = _inputImageFromCameraImage(image);
     if (inputImage == null) return;
-    widget.onImage(inputImage, _isContinue);
+    widget.onImage(inputImage, _isContinueScan);
   }
 
   final _orientations = {
@@ -565,7 +572,7 @@ class _CameraViewState extends State<CameraView> {
     });
     _path = path;
     final inputImage = InputImage.fromFilePath(path);
-    widget.onImage(inputImage, _isContinue);
+    widget.onImage(inputImage, _isContinueScan);
     _isGallery = false;
   }
 }
