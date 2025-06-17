@@ -40,6 +40,9 @@ class BarcodeScannerViewState extends State<BarcodeScannerView> {
     _receiver = widget.receiver;
     _text = '';
     _customPaint = null;
+    SystemChrome.setPreferredOrientations([
+      DeviceOrientation.portraitUp,
+    ]);
     super.initState();
   }
 
@@ -49,6 +52,12 @@ class BarcodeScannerViewState extends State<BarcodeScannerView> {
     _isScanned = false;
     _text = '';
     _barcodeScanner.close();
+    SystemChrome.setPreferredOrientations([
+      DeviceOrientation.portraitUp,
+      DeviceOrientation.portraitDown,
+      DeviceOrientation.landscapeLeft,
+      DeviceOrientation.landscapeRight,
+    ]);
     super.dispose();
   }
 

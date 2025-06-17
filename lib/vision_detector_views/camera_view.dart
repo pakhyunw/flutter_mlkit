@@ -16,7 +16,7 @@ class CameraView extends StatefulWidget {
       {Key? key,
       required this.customPaint,
       required this.onImage,
-        required this.receiver,
+      required this.receiver,
       this.onCameraFeedReady,
       this.onDetectorViewModeChanged,
       this.onCameraLensDirectionChanged,
@@ -75,8 +75,8 @@ class _CameraViewState extends State<CameraView> {
     if (_cameraIndex != -1) {
       _startLiveFeed();
     }
-    widget.receiver.stream.listen((ScanResult resultData){
-        _scanCount++;
+    widget.receiver.stream.listen((ScanResult resultData) {
+      _scanCount++;
     });
   }
 
@@ -116,12 +116,12 @@ class _CameraViewState extends State<CameraView> {
                           height: 56,
                           child: Center(
                               child: Text(
-                                '코드스캔',
-                                style: TextStyle(
-                                    color: Colors.white,
-                                    fontWeight: FontWeight.bold,
-                                    fontSize: 17),
-                              ))),
+                            '코드스캔',
+                            style: TextStyle(
+                                color: Colors.white,
+                                fontWeight: FontWeight.bold,
+                                fontSize: 17),
+                          ))),
                       // _detectionViewModeToggle(),
                     ])),
           ),
@@ -144,10 +144,11 @@ class _CameraViewState extends State<CameraView> {
                             child: CameraPreview(
                               _controller!,
                               child: widget.customPaint,
-                          ),),
+                            ),
+                          ),
                         ),
                       ),
-                                            ),
+                    ),
             ),
           ),
           _flash(),
@@ -176,35 +177,42 @@ class _CameraViewState extends State<CameraView> {
       );
 
   Widget _detectionViewModeToggle() => Positioned(
-    top: _controller!.value.previewSize!.height / 1.5 - 20,
-    child: GestureDetector(
-      onTap: () => _getImage(ImageSource.gallery),
-      child: Container(
-        padding: EdgeInsets.only(left: 15, right: 15, top:10, bottom:10),
-        decoration: BoxDecoration(borderRadius: BorderRadius.circular(50),color: Colors.black38,),
-        
-        child: Row(
-          children: [
-            Icon(
-              Icons.photo_outlined,
-              color: Colors.white,
-              size: 25,
+        top: _controller!.value.previewSize!.height / 1.5 - 20,
+        child: GestureDetector(
+          onTap: () => _getImage(ImageSource.gallery),
+          child: Container(
+            padding: EdgeInsets.only(left: 15, right: 15, top: 10, bottom: 10),
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(50),
+              color: Colors.black38,
             ),
-            Text('앨범', style: TextStyle(color: Colors.white),)
-          ],
+            child: Row(
+              children: [
+                Icon(
+                  Icons.photo_outlined,
+                  color: Colors.white,
+                  size: 25,
+                ),
+                Text(
+                  '앨범',
+                  style: TextStyle(color: Colors.white),
+                )
+              ],
+            ),
+          ),
         ),
-      ),
-    ),
-  );
+      );
 
   Widget _flash() => Positioned(
-    top: 66,
-    right: 10,
-    child: Container(
+        top: 66,
+        right: 10,
+        child: Container(
           height: 50.0,
           width: 50.0,
-
-          decoration: BoxDecoration(borderRadius: BorderRadius.circular(50),color: Colors.black38,),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(50),
+            color: Colors.black38,
+          ),
           child: IconButton(
             onPressed: () => toggleFlash(),
             icon: Icon(
@@ -214,7 +222,7 @@ class _CameraViewState extends State<CameraView> {
             ),
           ),
         ),
-  );
+      );
 
   toggleFlash() {
     setState(() {
@@ -224,11 +232,17 @@ class _CameraViewState extends State<CameraView> {
   }
 
   Widget _continueSwitch() => Positioned(
-    top: _controller!.value.previewSize!.height / 1.5 + 66,
-    child: Row(
+        top: _controller!.value.previewSize!.height / 1.5 + 66,
+        child: Row(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            const Text('단일 스캔', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize:16),),
+            const Text(
+              '단일 스캔',
+              style: TextStyle(
+                  color: Colors.white,
+                  fontWeight: FontWeight.bold,
+                  fontSize: 16),
+            ),
             const SizedBox(width: 10),
             Switch(
               value: _isContinue,
@@ -237,15 +251,18 @@ class _CameraViewState extends State<CameraView> {
               onChanged: (value) {
                 setState(() {
                   _isContinue = value;
-
                 });
               },
             ),
             const SizedBox(width: 10),
-           const Text('연속 스캔', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize:16)),
+            const Text('연속 스캔',
+                style: TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.bold,
+                    fontSize: 16)),
           ],
         ),
-  );
+      );
 
   Widget _switchLiveCameraToggle() => Visibility(
         visible: false,
@@ -430,28 +447,34 @@ class _CameraViewState extends State<CameraView> {
     setState(() => _changingCameraLens = false);
   }
 
-  _countButton(){
+  _countButton() {
     return Visibility(
       visible: _scanCount > 0,
       child: Positioned(
-        bottom: 30,
+          bottom: 30,
           child: GestureDetector(
-
-            onTap: ()=>_backButton(),
+            onTap: () => Navigator.of(context).pop(),
             child: Container(
-              height: 56,
+                height: 56,
                 width: MediaQuery.of(context).size.width - 30,
                 decoration: BoxDecoration(
                   color: Colors.blue,
                   borderRadius: BorderRadius.circular(25.0),
                 ),
-                child: Center(child: Text('$_scanCount개 스캔 완료', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 18),))),
+                child: Center(
+                    child: Text(
+                  '$_scanCount개 스캔 완료',
+                  style: TextStyle(
+                      color: Colors.white,
+                      fontWeight: FontWeight.bold,
+                      fontSize: 18),
+                ))),
           )),
     );
   }
 
   void _processCameraImage(CameraImage image) {
-    if(_isGallery) return;
+    if (_isGallery) return;
 
     final inputImage = _inputImageFromCameraImage(image);
     if (inputImage == null) return;
@@ -481,7 +504,7 @@ class _CameraViewState extends State<CameraView> {
       rotation = InputImageRotationValue.fromRawValue(sensorOrientation);
     } else if (Platform.isAndroid) {
       var rotationCompensation =
-      _orientations[_controller!.value.deviceOrientation];
+          _orientations[_controller!.value.deviceOrientation];
       if (rotationCompensation == null) return null;
       if (camera.lensDirection == CameraLensDirection.front) {
         // front-facing
@@ -496,7 +519,6 @@ class _CameraViewState extends State<CameraView> {
     }
     if (rotation == null) return null;
     // print('final rotation: $rotation');
-
 
     // get image format
     final format = InputImageFormatValue.fromRawValue(image.format.raw);
@@ -525,9 +547,6 @@ class _CameraViewState extends State<CameraView> {
     );
   }
 
-
-
-
   Future _getImage(ImageSource source) async {
     _isGallery = true;
     setState(() {
@@ -539,8 +558,6 @@ class _CameraViewState extends State<CameraView> {
       _processFile(pickedFile.path);
     }
   }
-
-
 
   Future _processFile(String path) async {
     setState(() {
