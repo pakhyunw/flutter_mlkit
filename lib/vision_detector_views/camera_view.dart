@@ -260,6 +260,8 @@ class _CameraViewState extends State<CameraView> {
           value: _isContinueScan,
           activeColor: Colors.white,
           activeTrackColor: Colors.blue,
+          inactiveThumbColor: Colors.white,
+          inactiveTrackColor: Colors.grey,
           onChanged: (value) {
             setState(() {
               _isContinueScan = value;
