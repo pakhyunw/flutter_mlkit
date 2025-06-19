@@ -100,6 +100,10 @@ class _CameraViewState extends State<CameraView> {
     if (_controller == null) return Container();
     if (_controller?.value.isInitialized == false) return Container();
 
+    var width = MediaQuery.of(context).size.width;
+    var height = MediaQuery.of(context).size.height;
+
+
     return ColoredBox(
       color: Colors.black,
       child: Column(
@@ -137,14 +141,14 @@ class _CameraViewState extends State<CameraView> {
                     child: const Text('Changing camera lens'),
                   )
                       : Container(
-                    width: _controller!.value.previewSize!.width / 3,
-                    height: _controller!.value.previewSize!.height / (  MediaQuery.of(context).size.height > (_controller!.value.previewSize!.height /1.5) + 168 ? 1.5 : 2),
+                    width: width,
+                    height: width < height ? height / ( height > (height /1.5) + 168 ? 1.5 : 2) - 56 :  height / 1.5,
                     child: ClipRect(
                       child: FittedBox(
                         fit: BoxFit.cover, // ✅ 중심 맞추고 위아래 잘라냄
                         child: SizedBox(
-                          width: _controller!.value.previewSize!.height,
-                          height: _controller!.value.previewSize!.width,
+                          width: width > height ? _controller!.value.previewSize!.width : _controller!.value.previewSize!.height,
+                          height: width < height ? _controller!.value.previewSize!.width : _controller!.value.previewSize!.height,
                           child: CameraPreview(
                             _controller!,
                             child: widget.customPaint,
@@ -155,6 +159,7 @@ class _CameraViewState extends State<CameraView> {
                   ),
                 ),
                 _flash(),
+                _switchLiveCameraToggle(),
                 _zoomControl(),
                 _detectionViewModeToggle(),
 
