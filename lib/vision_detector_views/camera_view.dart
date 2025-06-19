@@ -342,7 +342,7 @@ class _CameraViewState extends State<CameraView> {
               child: Center(
                 child: Text(
                   '${_currentZoomLevel.toStringAsFixed(1)}x',
-                  style: const TextStyle(color: Colors.white),
+                  style: const TextStyle(color: Colors.white, fontSize: 15),
                 ),
               ),
             ),
