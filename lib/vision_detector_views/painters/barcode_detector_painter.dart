@@ -26,7 +26,7 @@ class BarcodeDetectorPainter extends CustomPainter {
     final Paint paint = Paint()
       ..style = PaintingStyle.stroke
       ..strokeWidth = 3.0
-      ..color = Colors.lightGreenAccent;
+      ..color = Colors.amberAccent;
 
     final Paint background = Paint()..color = Color(0x99000000);
 
@@ -38,7 +38,7 @@ class BarcodeDetectorPainter extends CustomPainter {
             textDirection: TextDirection.ltr),
       );
       builder.pushStyle(
-          ui.TextStyle(color: Colors.lightGreenAccent, background: background));
+          ui.TextStyle(color: Colors.blue, background: background));
       // builder.addText('${barcode.displayValue}');
       builder.pop();
 

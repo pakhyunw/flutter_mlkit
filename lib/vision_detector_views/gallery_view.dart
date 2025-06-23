@@ -20,7 +20,7 @@ class GalleryView extends StatefulWidget {
 
   final String title;
   final String? text;
-  final Function(InputImage inputImage) onImage;
+  final Function(InputImage inputImage, bool isContinue) onImage;
   final Function()? onDetectorViewModeChanged;
 
   @override
@@ -181,6 +181,6 @@ class _GalleryViewState extends State<GalleryView> {
     });
     _path = path;
     final inputImage = InputImage.fromFilePath(path);
-    widget.onImage(inputImage);
+    widget.onImage(inputImage, false);
   }
 }

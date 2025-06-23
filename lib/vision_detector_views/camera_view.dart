@@ -1,4 +1,6 @@
+import 'dart:async';
 import 'dart:io';
+import 'dart:math';
 
 import 'package:camera/camera.dart';
 import 'package:flutter/cupertino.dart';
@@ -7,19 +9,25 @@ import 'package:flutter/services.dart';
 import 'package:google_mlkit_commons/google_mlkit_commons.dart';
 import 'package:image_picker/image_picker.dart';
 
+import '../flutter_mlkit.dart';
+
 class CameraView extends StatefulWidget {
   CameraView(
       {Key? key,
       required this.customPaint,
       required this.onImage,
+      required this.receiver,
+        required this.isContinue,
       this.onCameraFeedReady,
       this.onDetectorViewModeChanged,
       this.onCameraLensDirectionChanged,
       this.initialCameraLensDirection = CameraLensDirection.back})
       : super(key: key);
 
+  final StreamController<BarcodeScanResult> receiver;
   final CustomPaint? customPaint;
-  final Function(InputImage inputImage) onImage;
+  final bool isContinue;
+  final Function(InputImage inputImage, bool isContinue) onImage;
   final VoidCallback? onCameraFeedReady;
   final VoidCallback? onDetectorViewModeChanged;
   final Function(CameraLensDirection direction)? onCameraLensDirectionChanged;
@@ -40,14 +48,20 @@ class _CameraViewState extends State<CameraView> {
   double _maxAvailableExposureOffset = 0.0;
   double _currentExposureOffset = 0.0;
   bool _changingCameraLens = false;
+  bool _flashStatus = false;
+  bool _isContinueScan = false;
+  int _scanCount = 0;
   File? _image;
   String? _path;
   ImagePicker? _imagePicker;
+  bool _isGallery = false;
+  bool? _isContinue;
 
   @override
   void initState() {
     super.initState();
     _imagePicker = ImagePicker();
+    _isContinue = widget.isContinue;
 
     _initialize();
   }
@@ -55,7 +69,6 @@ class _CameraViewState extends State<CameraView> {
   void _initialize() async {
     if (_cameras.isEmpty) {
       _cameras = await availableCameras();
-
     }
     for (var i = 0; i < _cameras.length; i++) {
       if (_cameras[i].lensDirection == widget.initialCameraLensDirection) {
@@ -66,6 +79,9 @@ class _CameraViewState extends State<CameraView> {
     if (_cameraIndex != -1) {
       _startLiveFeed();
     }
+    widget.receiver.stream.listen((BarcodeScanResult resultData) {
+      _scanCount++;
+    });
   }
 
   @override
@@ -84,69 +100,192 @@ class _CameraViewState extends State<CameraView> {
     if (_controller == null) return Container();
     if (_controller?.value.isInitialized == false) return Container();
 
+    var width = MediaQuery.of(context).size.width;
+    var height = MediaQuery.of(context).size.height;
+
+
     return ColoredBox(
       color: Colors.black,
-      child: Stack(
-        fit: StackFit.expand,
+      child: Column(
+        // alignment: Alignment.topCenter,
+        // fit: StackFit.expand,
         children: <Widget>[
-          Center(
-            child: _changingCameraLens
-                ? Center(
+          Column(children: [
+
+            Container(
+                width: MediaQuery.of(context).size.width,
+                color: Colors.black54,
+                child: Row(
+                    mainAxisAlignment: MainAxisAlignment.start,
+                    crossAxisAlignment: CrossAxisAlignment.center,
+                    children: [
+                      _backButton(),
+                      const SizedBox(
+                          height: 56,
+                          child: Center(
+                              child: Text(
+                                '코드스캔',
+                                style: TextStyle(
+                                    color: Colors.white,
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 17),
+                              ))),
+                      // _detectionViewModeToggle(),
+                    ])),
+            Stack(
+              alignment: AlignmentDirectional.center,
+              children: [
+                Center(
+                  child: _changingCameraLens
+                      ? Center(
                     child: const Text('Changing camera lens'),
                   )
-                : CameraPreview(
-                    _controller!,
-                    child: widget.customPaint,
+                      : Container(
+                    width: width,
+                    height: width < height ? height / ( height > (height /1.5) + 168 ? 1.5 : 2) - 56 :  height / 1.5,
+                    child: ClipRect(
+                      child: FittedBox(
+                        fit: BoxFit.cover, // ✅ 중심 맞추고 위아래 잘라냄
+                        child: SizedBox(
+                          width: width > height ? _controller!.value.previewSize!.width : _controller!.value.previewSize!.height,
+                          height: width < height ? _controller!.value.previewSize!.width : _controller!.value.previewSize!.height,
+                          child: CameraPreview(
+                            _controller!,
+                            child: widget.customPaint,
+                          ),
+                        ),
+                      ),
+                    ),
                   ),
-          ),
-          Positioned(
-            top:0,
-            child: Container(
-              width: MediaQuery.of(context).size.width,
-                color:Colors.black54, child:Row(mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children:[
-                _backButton(),
-                // _detectionViewModeToggle(),
-              ]
-            )),
-          ),
-          _switchLiveCameraToggle(),
-          _zoomControl(),
-          _exposureControl(),
+                ),
+                _flash(),
+                _switchLiveCameraToggle(),
+                _zoomControl(),
+                _detectionViewModeToggle(),
+
+              ],
+            ),
+          ],),
+          Expanded(child: Padding(
+            padding: const EdgeInsets.only(bottom: 20.0),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+              _continueSwitch(),
+              _countButton(),
+            ],),
+          ))
         ],
       ),
     );
   }
 
   Widget _backButton() => SizedBox(
-    height: 50.0,
-    width: 50.0,
-    child: GestureDetector(
-      onTap: () => Navigator.of(context).pop(),
-      child: Icon(
-        Icons.arrow_back_ios_outlined,
-        color: Colors.white,
-        size: 20,
-      ),
-    ),
-  );
+        height: 50.0,
+        width: 50.0,
+        child: GestureDetector(
+          onTap: () => Navigator.of(context).pop(),
+          child: Icon(
+            Icons.arrow_back_ios_outlined,
+            color: Colors.white,
+            size: 20,
+          ),
+        ),
+      );
 
-  Widget _detectionViewModeToggle() => SizedBox(
-    height: 50.0,
-    width: 50.0,
-    child: GestureDetector(
-      onTap: ()=>_getImage(ImageSource.gallery),
-      child: Icon(
-        Icons.photo_library_outlined,
-        color:Colors.white,
-        size: 25,
-      ),
+  Widget _detectionViewModeToggle() => Positioned(
+        bottom: 20,
+        child: GestureDetector(
+          onTap: () => _getImage(ImageSource.gallery),
+          child: Container(
+            padding: EdgeInsets.only(left: 15, right: 15, top: 10, bottom: 10),
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(50),
+              color: Colors.black38,
+            ),
+            child: Row(
+              children: [
+                Icon(
+                  Icons.photo_outlined,
+                  color: Colors.white,
+                  size: 25,
+                ),
+                Text(
+                  '앨범',
+                  style: TextStyle(color: Colors.white),
+                )
+              ],
+            ),
+          ),
+        ),
+      );
+
+  Widget _flash() => Positioned(
+        top: 10,
+        right: 10,
+        child: Container(
+          height: 50.0,
+          width: 50.0,
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(50),
+            color: Colors.black38,
+          ),
+          child: IconButton(
+            onPressed: () => toggleFlash(),
+            icon: Icon(
+              _flashStatus ? Icons.flash_on : Icons.flash_off,
+              color: Colors.white,
+              size: 25,
+            ),
+          ),
+        ),
+      );
+
+  toggleFlash() {
+    setState(() {
+      _flashStatus = !_flashStatus;
+    });
+    _controller?.setFlashMode(_flashStatus ? FlashMode.torch : FlashMode.off);
+  }
+
+  Widget _continueSwitch() => Visibility(
+    visible: _isContinue ?? false,
+    child: Row(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        const Text(
+          '단일 스캔',
+          style: TextStyle(
+              color: Colors.white,
+              fontWeight: FontWeight.bold,
+              fontSize: 16),
+        ),
+        const SizedBox(width: 10),
+        Switch(
+          value: _isContinueScan,
+          activeColor: Colors.white,
+          activeTrackColor: Colors.blue,
+          inactiveThumbColor: Colors.white,
+          inactiveTrackColor: Colors.grey,
+          onChanged: (value) {
+            setState(() {
+              _isContinueScan = value;
+            });
+          },
+        ),
+        const SizedBox(width: 10),
+        const Text('연속 스캔',
+            style: TextStyle(
+                color: Colors.white,
+                fontWeight: FontWeight.bold,
+                fontSize: 16)),
+      ],
     ),
   );
 
   Widget _switchLiveCameraToggle() => Visibility(
-    visible: false,
-    child: Positioned(
+        visible: false,
+        child: Positioned(
           bottom: 8,
           right: 8,
           child: SizedBox(
@@ -160,70 +299,61 @@ class _CameraViewState extends State<CameraView> {
                 Platform.isIOS
                     ? Icons.flip_camera_ios_outlined
                     : Icons.flip_camera_android_outlined,
-                color:Colors.white,
-
+                color: Colors.white,
                 size: 25,
               ),
             ),
           ),
         ),
-  );
+      );
 
   Widget _zoomControl() => Visibility(
     visible: true,
     child: Positioned(
-          bottom: 16,
-          left: 0,
-          right: 0,
-          child: Align(
-            alignment: Alignment.bottomCenter,
-            child: SizedBox(
-              width: 250,
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                crossAxisAlignment: CrossAxisAlignment.center,
-                children: [
-                  Expanded(
-                    child: Slider(
-                      value: _currentZoomLevel,
-                      min: _minAvailableZoom,
-                      max: _maxAvailableZoom,
-                      activeColor: Colors.white,
-                      inactiveColor: Colors.white30,
-                      onChanged: (value) async {
-                        setState(() {
-                          _currentZoomLevel = value;
-                        });
-                        await _controller?.setZoomLevel(value);
-                      },
-                    ),
-                  ),
-                  Container(
-                    width: 50,
-                    decoration: BoxDecoration(
-                      color: Colors.black54,
-                      borderRadius: BorderRadius.circular(10.0),
-                    ),
-                    child: Padding(
-                      padding: const EdgeInsets.all(8.0),
-                      child: Center(
-                        child: Text(
-                          '${_currentZoomLevel.toStringAsFixed(1)}x',
-                          style: TextStyle(color: Colors.white),
-                        ),
-                      ),
-                    ),
-                  ),
-                ],
+      right: 10,
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          RotatedBox(
+            quarterTurns: 3, // 90도 회전 (세로로)
+            child: Slider(
+              value: _currentZoomLevel,
+              min: _minAvailableZoom,
+              max: _maxAvailableZoom,
+              activeColor: Colors.white,
+              inactiveColor: Colors.white30,
+              onChanged: (value) async {
+                setState(() {
+                  _currentZoomLevel = value;
+                });
+                await _controller?.setZoomLevel(value);
+              },
+            ),
+          ),
+          const SizedBox(height: 10),
+          Container(
+            width: 50,
+            decoration: BoxDecoration(
+              color: Colors.black54,
+              borderRadius: BorderRadius.circular(10.0),
+            ),
+            child: Padding(
+              padding: const EdgeInsets.all(8.0),
+              child: Center(
+                child: Text(
+                  '${_currentZoomLevel.toStringAsFixed(1)}x',
+                  style: const TextStyle(color: Colors.white, fontSize: 15),
+                ),
               ),
             ),
           ),
-        ),
+        ],
+      ),
+    ),
   );
-
   Widget _exposureControl() => Visibility(
-    visible: false,
-    child: Positioned(
+        visible: false,
+        child: Positioned(
           top: 40,
           right: 8,
           child: ConstrainedBox(
@@ -271,7 +401,7 @@ class _CameraViewState extends State<CameraView> {
             ]),
           ),
         ),
-  );
+      );
 
   Future _startLiveFeed() async {
     final camera = _cameras[_cameraIndex];
@@ -329,10 +459,36 @@ class _CameraViewState extends State<CameraView> {
     setState(() => _changingCameraLens = false);
   }
 
+  _countButton() {
+    return Visibility(
+      visible: _scanCount > 0,
+      child: GestureDetector(
+        onTap: () => Navigator.of(context).pop(),
+        child: Container(
+            height: 56,
+            width: MediaQuery.of(context).size.width - 30,
+            decoration: BoxDecoration(
+              color: Colors.blue,
+              borderRadius: BorderRadius.circular(25.0),
+            ),
+            child: Center(
+                child: Text(
+              '$_scanCount개 스캔 완료',
+              style: TextStyle(
+                  color: Colors.white,
+                  fontWeight: FontWeight.bold,
+                  fontSize: 18),
+            ))),
+      ),
+    );
+  }
+
   void _processCameraImage(CameraImage image) {
+    if (_isGallery) return;
+
     final inputImage = _inputImageFromCameraImage(image);
     if (inputImage == null) return;
-    widget.onImage(inputImage);
+    widget.onImage(inputImage, _isContinueScan);
   }
 
   final _orientations = {
@@ -376,11 +532,24 @@ class _CameraViewState extends State<CameraView> {
 
     // get image format
     final format = InputImageFormatValue.fromRawValue(image.format.raw);
+
     // validate format depending on platform
     // only supported formats:
     // * nv21 for Android
     // * bgra8888 for iOS
-    if (format == null ||
+
+    if (Platform.isAndroid && format == InputImageFormat.yuv_420_888) {
+      Uint8List nv21Data = convertYUV420ToNV21(image);
+      return InputImage.fromBytes(
+        bytes: nv21Data,
+        metadata: InputImageMetadata(
+          size: Size(image.width.toDouble(), image.height.toDouble()),
+          rotation: rotation,
+          format: InputImageFormat.nv21,
+          bytesPerRow: image.width,
+        ),
+      );
+    } else if (format == null ||
         (Platform.isAndroid && format != InputImageFormat.nv21) ||
         (Platform.isIOS && format != InputImageFormat.bgra8888)) return null;
 
@@ -400,7 +569,62 @@ class _CameraViewState extends State<CameraView> {
     );
   }
 
+  Uint8List convertYUV420ToNV21(CameraImage image) {
+    final width = image.width;
+    final height = image.height;
+
+    // Planes from CameraImage
+    final yPlane = image.planes[0];
+    final uPlane = image.planes[1];
+    final vPlane = image.planes[2];
+
+    // Buffers from Y, U, and V planes
+    final yBuffer = yPlane.bytes;
+    final uBuffer = uPlane.bytes;
+    final vBuffer = vPlane.bytes;
+
+    // Total number of pixels in NV21 format
+    final numPixels = width * height + (width * height ~/ 2);
+    final nv21 = Uint8List(numPixels);
+
+    // Y (Luma) plane metadata
+    int idY = 0;
+    int idUV = width * height; // Start UV after Y plane
+    final uvWidth = width ~/ 2;
+    final uvHeight = height ~/ 2;
+
+    // Strides and pixel strides for Y and UV planes
+    final yRowStride = yPlane.bytesPerRow;
+    final yPixelStride = yPlane.bytesPerPixel ?? 1;
+    final uvRowStride = uPlane.bytesPerRow;
+    final uvPixelStride = uPlane.bytesPerPixel ?? 2;
+
+    // Copy Y (Luma) channel
+    for (int y = 0; y < height; ++y) {
+      final yOffset = y * yRowStride;
+      for (int x = 0; x < width; ++x) {
+        nv21[idY++] = yBuffer[yOffset + x * yPixelStride];
+      }
+    }
+
+    // Copy UV (Chroma) channels in NV21 format (YYYYVU interleaved)
+    for (int y = 0; y < uvHeight; ++y) {
+      final uvOffset = y * uvRowStride;
+      for (int x = 0; x < uvWidth; ++x) {
+        final bufferIndex = uvOffset + (x * uvPixelStride);
+        nv21[idUV++] = vBuffer[bufferIndex]; // V channel
+        nv21[idUV++] = uBuffer[bufferIndex]; // U channel
+      }
+    }
+
+    return nv21;
+  }
+
+
+
+
   Future _getImage(ImageSource source) async {
+    _isGallery = true;
     setState(() {
       _image = null;
       _path = null;
@@ -417,6 +641,7 @@ class _CameraViewState extends State<CameraView> {
     });
     _path = path;
     final inputImage = InputImage.fromFilePath(path);
-    widget.onImage(inputImage);
+    widget.onImage(inputImage, _isContinueScan);
+    _isGallery = false;
   }
 }
