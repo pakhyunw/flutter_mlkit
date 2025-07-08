@@ -18,9 +18,9 @@ class CameraView extends StatefulWidget {
       required this.onImage,
       required this.receiver,
         required this.isContinue,
-        this.codeScanString = '코드스캔',
-        this.singleScanString = '단일 스캔',
-        this.continuousScanString = '연속 스캔',
+        this.codeScanString,
+        this.singleScanString,
+        this.continuousScanString,
       this.onCameraFeedReady,
       this.onDetectorViewModeChanged,
       this.onCameraLensDirectionChanged,
@@ -77,9 +77,9 @@ class _CameraViewState extends State<CameraView> {
   }
 
   void _initialize() async {
-    codeScanString = widget.codeScanString!;
-    singleScanString = widget.singleScanString!;
-    continuousScanString = widget.continuousScanString!;
+    codeScanString = widget.codeScanString ?? '코드스캔';
+    singleScanString = widget.singleScanString ?? '단일 스캔';
+    continuousScanString = widget.continuousScanString ?? '연속 스캔';
     if (_cameras.isEmpty) {
       _cameras = await availableCameras();
     }
