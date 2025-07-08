@@ -23,7 +23,7 @@ class FlutterMlkit {
         isContinue: isContinue,
         codeScanString: codeScanString,
         singleScanString: singleScanString,
-        continuousScanString: codeScanString,
+        continuousScanString: continuousScanString,
       );
       var scannedText = '';
       Future.delayed(const Duration(milliseconds: 1000), () {
