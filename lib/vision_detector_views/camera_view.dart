@@ -130,24 +130,26 @@ class _CameraViewState extends State<CameraView> {
                 color: Colors.black54,
                 child: GestureDetector(
                   onTap: () => Navigator.of(context).pop(),
-                  child: Row(
-                      mainAxisAlignment: MainAxisAlignment.start,
-                      crossAxisAlignment: CrossAxisAlignment.center,
-                      children: [
-                        _backButton(),
-                        Container(
-                            color: Colors.transparent,
-                            height: 56,
-                            child: Center(
-                                child: Text(
-                                  codeScanString,
-                                  style: const TextStyle(
-                                      color: Colors.white,
-                                      fontWeight: FontWeight.bold,
-                                      fontSize: 17),
-                                ))),
-                        // _detectionViewModeToggle(),
-                      ]),
+                  child: Container(
+                    color: Colors.transparent,
+                    child: Row(
+                        mainAxisAlignment: MainAxisAlignment.start,
+                        crossAxisAlignment: CrossAxisAlignment.center,
+                        children: [
+                          _backButton(),
+                          SizedBox(
+                              height: 56,
+                              child: Center(
+                                  child: Text(
+                                    codeScanString,
+                                    style: const TextStyle(
+                                        color: Colors.white,
+                                        fontWeight: FontWeight.bold,
+                                        fontSize: 17),
+                                  ))),
+                          // _detectionViewModeToggle(),
+                        ]),
+                  ),
                 )),
             Stack(
               alignment: AlignmentDirectional.center,
