@@ -1,4 +1,5 @@
 library flutter_mlkit;
+
 import 'dart:async';
 
 import 'package:flutter/material.dart';
@@ -6,15 +7,28 @@ import 'package:flutter/material.dart';
 import 'vision_detector_views/barcode_scanner_view.dart';
 
 class FlutterMlkit {
-  static Future<void> barcodeScan(context, Function(BarcodeScanResult) result, {bool isContinue = false}) async {
+  static Future<void> barcodeScan(
+    context,
+    Function(BarcodeScanResult) result, {
+    bool isContinue = false,
+    String? codeScanString,
+    String? singleScanString,
+    String? continuousScanString,
+  }) async {
     try {
       await Future.delayed(const Duration(milliseconds: 500));
       final StreamController<BarcodeScanResult> receiver = StreamController();
-      late BarcodeScannerView barcode = BarcodeScannerView(receiver: receiver, isContinue:isContinue);
+      late BarcodeScannerView barcode = BarcodeScannerView(
+        receiver: receiver,
+        isContinue: isContinue,
+        codeScanString: codeScanString,
+        singleScanString: singleScanString,
+        continuousScanString: codeScanString,
+      );
       var scannedText = '';
       Future.delayed(const Duration(milliseconds: 1000), () {
         receiver.stream.listen((BarcodeScanResult resultData) {
-          if(!resultData.isContinue){
+          if (!resultData.isContinue) {
             receiver.close();
             result(resultData);
             Navigator.pop(context);
@@ -26,10 +40,10 @@ class FlutterMlkit {
       await showDialog(
           context: context,
           builder: (BuildContext context) {
-            return barcode;});
+            return barcode;
+          });
       receiver.close();
-
-    } catch (e){
+    } catch (e) {
       debugPrint(e.toString());
     }
   }
