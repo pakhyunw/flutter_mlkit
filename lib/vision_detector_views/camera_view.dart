@@ -18,11 +18,18 @@ class CameraView extends StatefulWidget {
       required this.onImage,
       required this.receiver,
         required this.isContinue,
+        this.codeScanString = '코드스캔',
+        this.singleScanString = '단일 스캔',
+        this.continuousScanString = '연속 스캔',
       this.onCameraFeedReady,
       this.onDetectorViewModeChanged,
       this.onCameraLensDirectionChanged,
       this.initialCameraLensDirection = CameraLensDirection.back})
       : super(key: key);
+
+  String? codeScanString;
+  String? singleScanString;
+  String? continuousScanString;
 
   final StreamController<BarcodeScanResult> receiver;
   final CustomPaint? customPaint;
@@ -56,6 +63,9 @@ class _CameraViewState extends State<CameraView> {
   ImagePicker? _imagePicker;
   bool _isGallery = false;
   bool? _isContinue;
+  String codeScanString = '';
+  String singleScanString = '';
+  String continuousScanString = '';
 
   @override
   void initState() {
@@ -67,6 +77,9 @@ class _CameraViewState extends State<CameraView> {
   }
 
   void _initialize() async {
+    codeScanString = widget.codeScanString!;
+    singleScanString = widget.singleScanString!;
+    continuousScanString = widget.continuousScanString!;
     if (_cameras.isEmpty) {
       _cameras = await availableCameras();
     }
@@ -115,23 +128,27 @@ class _CameraViewState extends State<CameraView> {
             Container(
                 width: MediaQuery.of(context).size.width,
                 color: Colors.black54,
-                child: Row(
-                    mainAxisAlignment: MainAxisAlignment.start,
-                    crossAxisAlignment: CrossAxisAlignment.center,
-                    children: [
-                      _backButton(),
-                      const SizedBox(
-                          height: 56,
-                          child: Center(
-                              child: Text(
-                                '코드스캔',
-                                style: TextStyle(
-                                    color: Colors.white,
-                                    fontWeight: FontWeight.bold,
-                                    fontSize: 17),
-                              ))),
-                      // _detectionViewModeToggle(),
-                    ])),
+                child: GestureDetector(
+                  onTap: () => Navigator.of(context).pop(),
+                  child: Row(
+                      mainAxisAlignment: MainAxisAlignment.start,
+                      crossAxisAlignment: CrossAxisAlignment.center,
+                      children: [
+                        _backButton(),
+                        Container(
+                            color: Colors.transparent,
+                            height: 56,
+                            child: Center(
+                                child: Text(
+                                  codeScanString,
+                                  style: const TextStyle(
+                                      color: Colors.white,
+                                      fontWeight: FontWeight.bold,
+                                      fontSize: 17),
+                                ))),
+                        // _detectionViewModeToggle(),
+                      ]),
+                )),
             Stack(
               alignment: AlignmentDirectional.center,
               children: [
@@ -183,13 +200,10 @@ class _CameraViewState extends State<CameraView> {
   Widget _backButton() => SizedBox(
         height: 50.0,
         width: 50.0,
-        child: GestureDetector(
-          onTap: () => Navigator.of(context).pop(),
-          child: Icon(
-            Icons.arrow_back_ios_outlined,
-            color: Colors.white,
-            size: 20,
-          ),
+        child: Icon(
+          Icons.arrow_back_ios_outlined,
+          color: Colors.white,
+          size: 20,
         ),
       );
 
@@ -253,12 +267,18 @@ class _CameraViewState extends State<CameraView> {
     child: Row(
       mainAxisAlignment: MainAxisAlignment.center,
       children: [
-        const Text(
-          '단일 스캔',
-          style: TextStyle(
-              color: Colors.white,
-              fontWeight: FontWeight.bold,
-              fontSize: 16),
+        GestureDetector(
+          onTap: ()=>setState(() {_isContinueScan = false;}),
+          child:  Container(
+            color: Colors.transparent,
+            child: Text(
+              singleScanString,
+              style: const TextStyle(
+                  color: Colors.white,
+                  fontWeight: FontWeight.bold,
+                  fontSize: 16),
+            ),
+          ),
         ),
         const SizedBox(width: 10),
         Switch(
@@ -274,11 +294,17 @@ class _CameraViewState extends State<CameraView> {
           },
         ),
         const SizedBox(width: 10),
-        const Text('연속 스캔',
-            style: TextStyle(
-                color: Colors.white,
-                fontWeight: FontWeight.bold,
-                fontSize: 16)),
+        GestureDetector(
+          onTap: ()=>setState(() {_isContinueScan = true;}),
+          child: Container(
+            color: Colors.transparent,
+            child: Text(continuousScanString,
+                style: const TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.bold,
+                    fontSize: 16)),
+          ),
+        ),
       ],
     ),
   );
