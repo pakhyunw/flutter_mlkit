@@ -17,6 +17,9 @@ class DetectorView extends StatefulWidget {
     required this.onImage,
     required this.receiver,
     required this.isContinue,
+    this.codeScanString,
+    this.singleScanString,
+    this.continuousScanString,
     this.customPaint,
     this.text,
     this.initialDetectionMode = DetectorViewMode.liveFeed,
@@ -26,6 +29,9 @@ class DetectorView extends StatefulWidget {
     this.onCameraLensDirectionChanged,
   }) : super(key: key);
 
+  String? codeScanString;
+  String? singleScanString;
+  String? continuousScanString;
   final String title;
   final CustomPaint? customPaint;
   final String? text;
@@ -60,6 +66,9 @@ class _DetectorViewState extends State<DetectorView> {
             receiver: widget.receiver,
             isContinue: widget.isContinue,
             onCameraFeedReady: widget.onCameraFeedReady,
+            codeScanString: widget.codeScanString,
+            singleScanString: widget.singleScanString,
+            continuousScanString: widget.continuousScanString,
             onDetectorViewModeChanged: _onDetectorViewModeChanged,
             initialCameraLensDirection: widget.initialCameraLensDirection,
             onCameraLensDirectionChanged: widget.onCameraLensDirectionChanged,
