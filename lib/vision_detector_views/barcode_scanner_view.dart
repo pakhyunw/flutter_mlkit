@@ -143,29 +143,30 @@ class BarcodeScannerViewState extends State<BarcodeScannerView> {
         inputImage.metadata!.size,
         inputImage.metadata!.rotation,
         _cameraLensDirection,
+            (Barcode barcode){
+              if (!_isScanned) {
+                _canProcess = false;
+                _isScanned = true;
+                String code = '';
+                  code += barcode.displayValue!;
+                if (!_receiver.isClosed) {
+                  if (!_results.contains(code)) {
+                    _results.add(code);
+                    _receiver
+                        .add(BarcodeScanResult(message: code, isContinue: isContinue));
+                    _countReceiver
+                        .add(BarcodeScanResult(message: code, isContinue: isContinue));
+                  }
+                }
+                if (isContinue) {
+                  _canProcess = true;
+                  _isScanned = false;
+                }
+              }
+            },
       );
       _customPaint = CustomPaint(painter: painter);
-      if (barcodes.isNotEmpty && !_isScanned) {
-        _canProcess = false;
-        _isScanned = true;
-        String code = '';
-        for (Barcode barcode in barcodes) {
-          code += barcode.displayValue!;
-        }
-        if (!_receiver.isClosed) {
-          if (!_results.contains(code)) {
-            _results.add(code);
-            _receiver
-                .add(BarcodeScanResult(message: code, isContinue: isContinue));
-            _countReceiver
-                .add(BarcodeScanResult(message: code, isContinue: isContinue));
-          }
-        }
-        if (isContinue) {
-          _canProcess = true;
-          _isScanned = false;
-        }
-      }
+
     } else {
       String text = 'Barcodes found: ${barcodes.length}\n\n';
       for (final barcode in barcodes) {
