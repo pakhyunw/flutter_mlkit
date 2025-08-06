@@ -83,10 +83,14 @@ class _CameraViewState extends State<CameraView> {
     if (_cameras.isEmpty) {
       _cameras = await availableCameras();
     }
+
     for (var i = 0; i < _cameras.length; i++) {
       if (_cameras[i].lensDirection == widget.initialCameraLensDirection) {
         _cameraIndex = i;
-        break;
+        if(Platform.isIOS && _cameras[i].name.contains('built-in_video:5')){
+          _cameraIndex = i;
+          break;
+        }
       }
     }
     if (_cameraIndex != -1) {
@@ -433,6 +437,7 @@ class _CameraViewState extends State<CameraView> {
 
   Future _startLiveFeed() async {
     final camera = _cameras[_cameraIndex];
+    print(_cameras);
     _controller = CameraController(
       camera,
       // Set to ResolutionPreset.high. Do NOT set it to ResolutionPreset.max because for some phones does NOT work.
@@ -446,6 +451,7 @@ class _CameraViewState extends State<CameraView> {
       if (!mounted) {
         return;
       }
+      _controller?.setFocusMode(FocusMode.auto);
       _controller?.getMinZoomLevel().then((value) {
         _currentZoomLevel = value;
         _minAvailableZoom = value;
@@ -565,6 +571,7 @@ class _CameraViewState extends State<CameraView> {
     // only supported formats:
     // * nv21 for Android
     // * bgra8888 for iOS
+
 
     if (Platform.isAndroid && format == InputImageFormat.yuv_420_888) {
       Uint8List nv21Data = convertYUV420ToNV21(image);

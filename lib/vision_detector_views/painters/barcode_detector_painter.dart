@@ -100,9 +100,8 @@ class BarcodeDetectorPainter extends CustomPainter {
         cameraLensDirection,
       );
       final bottom = barcode.boundingBox.bottom;
-
-
-      if (top >= boxTop && bottom <= boxBottom) {
+      //TODO 일단 문제발생으로 무조건 box생성
+      if (top >= boxTop && bottom <= boxBottom || true) {
         final ParagraphBuilder builder = ParagraphBuilder(
           ParagraphStyle(
               textAlign: TextAlign.left,
