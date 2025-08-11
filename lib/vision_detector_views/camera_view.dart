@@ -87,6 +87,7 @@ class _CameraViewState extends State<CameraView> {
     for (var i = 0; i < _cameras.length; i++) {
       if (_cameras[i].lensDirection == widget.initialCameraLensDirection) {
         _cameraIndex = i;
+        if(Platform.isAndroid) break;
         if(Platform.isIOS && _cameras[i].name.contains('built-in_video:5')){
           _cameraIndex = i;
           break;
