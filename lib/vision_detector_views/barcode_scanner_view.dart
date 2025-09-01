@@ -6,6 +6,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_mlkit/flutter_mlkit.dart';
 import 'package:google_mlkit_barcode_scanning/google_mlkit_barcode_scanning.dart';
+import 'package:google_mlkit_text_recognition/google_mlkit_text_recognition.dart';
 import 'package:image/image.dart' as img;
 import 'package:path_provider/path_provider.dart';
 
@@ -42,6 +43,8 @@ class BarcodeScannerViewState extends State<BarcodeScannerView> {
   var _isScanned = false;
   late final StreamController<BarcodeScanResult> _receiver;
   final StreamController<BarcodeScanResult> _countReceiver = StreamController();
+  late final TextRecognizer _textRecognizer;
+
   bool _init = false;
   Set _results = {};
 
@@ -50,6 +53,8 @@ class BarcodeScannerViewState extends State<BarcodeScannerView> {
     _receiver = widget.receiver;
     _text = '';
     _customPaint = null;
+    _textRecognizer = TextRecognizer(script: TextRecognitionScript.korean);
+
     super.initState();
   }
 
@@ -77,6 +82,21 @@ class BarcodeScannerViewState extends State<BarcodeScannerView> {
       initialCameraLensDirection: _cameraLensDirection,
       onCameraLensDirectionChanged: (value) => _cameraLensDirection = value,
     );
+  }
+
+  _scriptConvert(LangageScript? lang) {
+    switch (lang) {
+      case LangageScript.chinese:
+        return TextRecognitionScript.chinese;
+      case LangageScript.devanagiri:
+        return TextRecognitionScript.devanagiri;
+      case LangageScript.japanese:
+        return TextRecognitionScript.japanese;
+      case LangageScript.korean:
+        return TextRecognitionScript.korean;
+      default:
+        return TextRecognitionScript.latin;
+    }
   }
 
   Future<void> _processImage(InputImage inputImage, bool isContinue) async {
@@ -108,17 +128,16 @@ class BarcodeScannerViewState extends State<BarcodeScannerView> {
         var invertedImage = img.invert(image);
         final jpgBytes = Uint8List.fromList(img.encodeJpg(invertedImage));
         final invertedPath = '${file.path}_inverted.jpg';
-        final invertedFile = File(invertedPath);
-        await invertedFile.writeAsBytes(jpgBytes);
-        invertedInputImage =
-            InputImage.fromFilePath('${file.path}_inverted.jpg');
+        await File(invertedPath).writeAsBytes(jpgBytes);
+        invertedInputImage = InputImage.fromFilePath(invertedPath);
+
       } else {
         final invertedBytes = _invertColors(imageBytes, inputImage.metadata);
         // Invert image colors
         invertedInputImage = InputImage.fromBytes(
           bytes: invertedBytes,
           metadata: InputImageMetadata(
-            size: inputImage.metadata?.size ?? Size(1024, 768),
+            size: inputImage.metadata?.size ?? const Size(1024, 768),
             rotation: inputImage.metadata?.rotation ??
                 InputImageRotation.rotation0deg,
             format: inputImage.metadata?.format ?? InputImageFormat.nv21,
@@ -135,6 +154,15 @@ class BarcodeScannerViewState extends State<BarcodeScannerView> {
     } else {
       barcodes = barcodesOriginal;
     }
+
+    final recognizedText = await _textRecognizer.processImage(inputImage);
+    print(recognizedText.blocks);
+    for (final textBunk in recognizedText.blocks) {
+      for (final element in textBunk.lines) {
+        for (final textBlock in element.elements) {
+          print(textBlock.text);
+        }}}
+
     barcodes = barcodes.isNotEmpty ? [barcodes[0]] : [];
     if (inputImage.metadata?.size != null &&
         inputImage.metadata?.rotation != null) {
@@ -289,4 +317,12 @@ class BarcodeScannerViewState extends State<BarcodeScannerView> {
 
     return invertedBytes;
   }
+}
+
+enum LangageScript{
+  latin,
+  chinese,
+  devanagiri,
+  japanese,
+  korean,
 }
