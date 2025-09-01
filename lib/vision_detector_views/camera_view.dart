@@ -114,91 +114,122 @@ class _CameraViewState extends State<CameraView> {
   }
 
   Widget _liveFeedBody() {
-    if (_cameras.isEmpty) return Container();
-    if (_controller == null) return Container();
-    if (_controller?.value.isInitialized == false) return Container();
+    if (_cameras.isEmpty || _controller == null || _controller?.value.isInitialized == false) {
+      return Container();
+    }
 
-    var width = MediaQuery.of(context).size.width;
-    var height = MediaQuery.of(context).size.height;
+    // Use the current context's size
+    final Size size = MediaQuery.of(context).size;
+    final double width = size.width;
+    final double height = size.height;
+    final bool isLandscape = width > height;
 
-
-    return ColoredBox(
-      color: Colors.black,
-      child: Column(
-        // alignment: Alignment.topCenter,
-        // fit: StackFit.expand,
-        children: <Widget>[
-          Column(children: [
-
-            Container(
-                width: MediaQuery.of(context).size.width,
-                color: Colors.black54,
-                child: GestureDetector(
-                  onTap: () => Navigator.of(context).pop(),
-                  child: Container(
-                    color: Colors.transparent,
-                    child: Row(
-                        mainAxisAlignment: MainAxisAlignment.start,
-                        crossAxisAlignment: CrossAxisAlignment.center,
-                        children: [
-                          _backButton(),
-                          SizedBox(
-                              height: 56,
-                              child: Center(
-                                  child: Text(
-                                    codeScanString,
-                                    style: const TextStyle(
-                                        color: Colors.white,
-                                        fontWeight: FontWeight.bold,
-                                        fontSize: 17),
-                                  ))),
-                          // _detectionViewModeToggle(),
-                        ]),
+    // Header bar
+    Widget headerBar = Container(
+      width: width,
+      color: Colors.black54,
+      child: GestureDetector(
+        onTap: () => Navigator.of(context).pop(),
+        child: Container(
+          color: Colors.transparent,
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.start,
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              _backButton(),
+              SizedBox(
+                height: 56,
+                child: Center(
+                  child: Text(
+                    codeScanString,
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontWeight: FontWeight.bold,
+                      fontSize: 17,
+                    ),
                   ),
-                )),
-            Stack(
-              alignment: AlignmentDirectional.center,
-              children: [
-                Center(
-                  child: _changingCameraLens
-                      ? Center(
-                    child: const Text('Changing camera lens'),
-                  )
-                      : Container(
-                    width: width,
-                    height: width < height ? height / ( height > (height /1.5) + 168 ? 1.5 : 2) - 56 :  height / 1.5,
-                    child: ClipRect(
-                      child: FittedBox(
-                        fit: BoxFit.cover, // ✅ 중심 맞추고 위아래 잘라냄
-                        child: SizedBox(
-                          width: width > height ? _controller!.value.previewSize!.width : _controller!.value.previewSize!.height,
-                          height: width < height ? _controller!.value.previewSize!.width : _controller!.value.previewSize!.height,
-                          child: CameraPreview(
-                            _controller!,
-                            child: widget.customPaint,
-                          ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+
+    // Calculate preview height
+    double previewHeight;
+    if (!isLandscape) {
+      // Portrait
+      // The preview area is height minus header (56) and bottom padding (approx 168), but not less than half screen
+      final double minPreviewHeight = height / 2;
+      final double maxPreviewHeight = height / 1.5;
+      previewHeight = height - 56 - 168;
+      if (previewHeight > maxPreviewHeight) {
+        previewHeight = maxPreviewHeight;
+      }
+      if (previewHeight < minPreviewHeight) {
+        previewHeight = minPreviewHeight;
+      }
+    } else {
+      // Landscape
+      previewHeight = height / 1.5;
+    }
+
+    // Camera preview area
+    Widget cameraPreviewArea = Stack(
+      alignment: AlignmentDirectional.center,
+      children: [
+        Center(
+          child: _changingCameraLens
+              ? const Center(child: Text('Changing camera lens'))
+              : Container(
+                  width: width,
+                  height: previewHeight,
+                  child: ClipRect(
+                    child: FittedBox(
+                      fit: BoxFit.cover,
+                      child: SizedBox(
+                        width: isLandscape
+                            ? _controller!.value.previewSize!.width
+                            : _controller!.value.previewSize!.height,
+                        height: !isLandscape
+                            ? _controller!.value.previewSize!.width
+                            : _controller!.value.previewSize!.height,
+                        child: CameraPreview(
+                          _controller!,
+                          child: widget.customPaint,
                         ),
                       ),
                     ),
                   ),
                 ),
-                _flash(),
-                _switchLiveCameraToggle(),
-                _zoomControl(),
-                _detectionViewModeToggle(),
+        ),
+        _flash(),
+        _switchLiveCameraToggle(),
+        _zoomControl(),
+        _detectionViewModeToggle(),
+      ],
+    );
 
-              ],
-            ),
-          ],),
-          Expanded(child: Padding(
-            padding: const EdgeInsets.only(bottom: 20.0),
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-              _continueSwitch(),
-              _countButton(),
-            ],),
-          ))
+    // Bottom controls
+    Widget bottomControls = Padding(
+      padding: const EdgeInsets.only(bottom: 20.0),
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          _continueSwitch(),
+          _countButton(),
+        ],
+      ),
+    );
+
+    return ColoredBox(
+      color: Colors.black,
+      child: Column(
+        children: <Widget>[
+          headerBar,
+          cameraPreviewArea,
+          Expanded(child: bottomControls),
         ],
       ),
     );

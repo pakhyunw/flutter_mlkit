@@ -42,114 +42,84 @@ class BarcodeDetectorPainter extends CustomPainter {
 
   @override
   void paint(Canvas canvas, Size size) {
-    final Paint paint = Paint()
+    // Use size.width and size.height to determine orientation and ROI.
+    final bool isLandscape = size.width > size.height;
+    final double roiBoxSize = (isLandscape ? size.height : size.width) * 0.5;
+    final double roiLeft = (size.width - roiBoxSize) / 2;
+    final double roiTop = (size.height - roiBoxSize) / 2;
+    final double roiRight = roiLeft + roiBoxSize;
+    final double roiBottom = roiTop + roiBoxSize;
+
+    final Paint roiPaint = Paint()
+      ..color = Colors.amberAccent
       ..style = PaintingStyle.stroke
-      ..strokeWidth = 3.0
-      ..color = Colors.amberAccent;
+      ..strokeWidth = 3;
 
-    final Paint background = Paint()..color = Colors.red;
+    const double cornerRadius = 15.0;
 
-    final double screenWidth = size.width;
-    final double screenHeight = size.height;
+    final rrect = RRect.fromLTRBR(roiLeft, roiTop, roiRight, roiBottom, const Radius.circular(cornerRadius));
 
-    final double cropHeight = screenWidth < screenHeight
-        ? screenHeight / (screenHeight > (screenHeight / 1.5) + 168 ? 1.5 : 2) + 56
-        : screenHeight / 1.5;
-
-
-    final double cropTopUI = (screenHeight - cropHeight) / 2;
-    final double cropBottomUI = cropTopUI + cropHeight;
-
-    final double boxTop = translateYInverse(
-      cropTopUI,
-      rotation,
-      size,
-      imageSize,
-    );
-    final double boxBottom = translateYInverse(
-      cropBottomUI,
-      rotation,
-      size,
-      imageSize,
-    );
-
-    // final Paint borderPaint = Paint()
-    //   ..color = Colors.white.withOpacity(0.5)
-    //   ..style = PaintingStyle.stroke
-    //   ..strokeWidth = 2;
-    //
-    // canvas.drawRect(
-    //   Rect.fromLTRB(0, cropTopUI, screenWidth, cropBottomUI),
-    //   borderPaint,
-    // );
+// 그림
+    canvas.drawRRect(rrect, roiPaint);
 
     for (final Barcode barcode in barcodes) {
-      final left = translateX(
+      // Translate barcode bounding box to canvas coordinates
+      final double barcodeLeft = translateX(
         barcode.boundingBox.left,
         size,
         imageSize,
         rotation,
         cameraLensDirection,
       );
-      final top = barcode.boundingBox.top;
-      final right = translateX(
+      final double barcodeRight = translateX(
         barcode.boundingBox.right,
         size,
         imageSize,
         rotation,
         cameraLensDirection,
       );
-      final bottom = barcode.boundingBox.bottom;
-      //TODO 일단 문제발생으로 무조건 box생성
-      if (top >= boxTop && bottom <= boxBottom || true) {
-        final ParagraphBuilder builder = ParagraphBuilder(
-          ParagraphStyle(
-              textAlign: TextAlign.left,
-              fontSize: 16,
-              textDirection: TextDirection.ltr),
-        );
-        builder.pushStyle(
-            ui.TextStyle(color: Colors.blue, background: background));
-        // builder.addText('${barcode.displayValue}');
-        builder.pop();
+      final double barcodeTop = translateY(
+        barcode.boundingBox.top,
+        size,
+        imageSize,
+        rotation,
+        cameraLensDirection,
+      );
+      final double barcodeBottom = translateY(
+        barcode.boundingBox.bottom,
+        size,
+        imageSize,
+        rotation,
+        cameraLensDirection,
+      );
 
-        final List<Offset> cornerPoints = <Offset>[];
-        for (final point in barcode.cornerPoints) {
-          final double x = translateX(
-            point.x.toDouble(),
-            size,
-            imageSize,
-            rotation,
-            cameraLensDirection,
-          );
-          final double y = translateY(
-            point.y.toDouble(),
-            size,
-            imageSize,
-            rotation,
-            cameraLensDirection,
-          );
+      // Check if barcode is fully inside the ROI
+      final bool isBarcodeInsideRoi =
+          barcodeLeft >= roiLeft &&
+          barcodeRight <= roiRight &&
+          barcodeTop >= roiTop &&
+          barcodeBottom <= roiBottom;
 
-          cornerPoints.add(Offset(x, y));
-        }
-
-        // Add the first point to close the polygon
-        cornerPoints.add(cornerPoints.first);
-        canvas.drawPoints(PointMode.polygon, cornerPoints, paint);
-
-        canvas.drawParagraph(
-          builder.build()
-            ..layout(ParagraphConstraints(
-              width: (right - left).abs(),
-            )),
-          Offset(
-              Platform.isAndroid &&
-                      cameraLensDirection == CameraLensDirection.front
-                  ? right
-                  : left,
-              top),
-        );
+      if (isBarcodeInsideRoi) {
         getScannedText(barcode);
+        // Draw barcode corners
+        final List<Offset> cornerOffsets = barcode.cornerPoints.map((point) {
+          return Offset(
+            translateX(point.x.toDouble(), size, imageSize, rotation, cameraLensDirection),
+            translateY(point.y.toDouble(), size, imageSize, rotation, cameraLensDirection),
+          );
+        }).toList();
+        if (cornerOffsets.isNotEmpty) {
+          // Close the polygon
+          cornerOffsets.add(cornerOffsets.first);
+          canvas.drawPoints(
+            PointMode.polygon,
+            cornerOffsets,
+            Paint()
+              ..color = Colors.amberAccent
+              ..strokeWidth = 3,
+          );
+        }
       }
     }
   }
