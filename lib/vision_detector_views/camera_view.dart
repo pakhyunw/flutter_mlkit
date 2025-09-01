@@ -469,7 +469,6 @@ class _CameraViewState extends State<CameraView> {
 
   Future _startLiveFeed() async {
     final camera = _cameras[_cameraIndex];
-    print(_cameras);
     _controller = CameraController(
       camera,
       // Set to ResolutionPreset.high. Do NOT set it to ResolutionPreset.max because for some phones does NOT work.
