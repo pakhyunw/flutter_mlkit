@@ -3,6 +3,7 @@ library flutter_mlkit;
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:google_mlkit_text_recognition/google_mlkit_text_recognition.dart';
 
 import 'ocr/flutter_scalable_ocr.dart';
 import 'vision_detector_views/barcode_scanner_view.dart' hide LangageScript;
@@ -62,7 +63,7 @@ class FlutterMlkit {
     int cameraSelection = 0,
     bool lockCamera = true,
     bool? isLiveFeed,
-    LangageScript? langageScript,
+    LanguageScript? languageScript,
   }) {
     return ScalableOCR(
       boxLeftOff: boxLeftOff,
@@ -77,7 +78,7 @@ class FlutterMlkit {
       cameraSelection: cameraSelection,
       lockCamera: lockCamera,
       isLiveFeed: isLiveFeed,
-      langageScript: langageScript,
+      languageScript: languageScript,
     );
   }
 }
@@ -87,4 +88,29 @@ class BarcodeScanResult {
   final bool isContinue;
 
   BarcodeScanResult({required this.message, required this.isContinue});
+}
+
+enum LanguageScript{
+  latin,
+  chinese,
+  devanagiri,
+  japanese,
+  korean,
+}
+
+extension LanguageScriptExtension on LanguageScript {
+  TextRecognitionScript get value {
+    switch (this) {
+      case LanguageScript.chinese:
+        return TextRecognitionScript.chinese;
+      case LanguageScript.devanagiri:
+        return TextRecognitionScript.devanagiri;
+      case LanguageScript.japanese:
+        return TextRecognitionScript.japanese;
+      case LanguageScript.korean:
+        return TextRecognitionScript.korean;
+      default:
+        return TextRecognitionScript.latin;
+    }
+  }
 }

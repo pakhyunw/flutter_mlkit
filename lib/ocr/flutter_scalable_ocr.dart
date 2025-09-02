@@ -1,4 +1,3 @@
-library flutter_mlkit;
 
 import 'dart:developer';
 import 'dart:io';
@@ -6,13 +5,14 @@ import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import '../flutter_mlkit.dart';
 import './text_recognizer_painter.dart';
 import 'package:google_mlkit_text_recognition/google_mlkit_text_recognition.dart';
 import 'package:camera/camera.dart';
 
 class ScalableOCR extends StatefulWidget {
   const ScalableOCR(
-      {Key? key,
+      {super.key,
         this.boxLeftOff = 4,
         this.boxRightOff = 4,
         this.boxBottomOff = 2.7,
@@ -25,9 +25,8 @@ class ScalableOCR extends StatefulWidget {
         this.cameraSelection = 0,
         this.torchOn,
         this.lockCamera = true,
-        this.langageScript
-      })
-      : super(key: key);
+        this.languageScript
+      });
 
   /// Offset on recalculated image left
   final double boxLeftOff;
@@ -64,7 +63,7 @@ class ScalableOCR extends StatefulWidget {
 
   final bool? isLiveFeed;
 
-  final LangageScript? langageScript;
+  final LanguageScript? languageScript;
 
   @override
   ScalableOCRState createState() => ScalableOCRState();
@@ -98,7 +97,7 @@ class ScalableOCRState extends State<ScalableOCR> {
   void initState() {
     super.initState();
     _isLiveFeed = widget.isLiveFeed ?? true;
-    _textRecognizer = TextRecognizer(script: _scriptConvert(widget.langageScript));
+    _textRecognizer = TextRecognizer(script: widget.languageScript?.value ?? LanguageScript.latin.value);
     startLiveFeed();
   }
 
@@ -477,26 +476,6 @@ class ScalableOCRState extends State<ScalableOCR> {
     });
   }
 
-  _scriptConvert(LangageScript? lang) {
-    switch (lang) {
-      case LangageScript.chinese:
-        return TextRecognitionScript.chinese;
-      case LangageScript.devanagiri:
-        return TextRecognitionScript.devanagiri;
-      case LangageScript.japanese:
-        return TextRecognitionScript.japanese;
-      case LangageScript.korean:
-        return TextRecognitionScript.korean;
-      default:
-        return TextRecognitionScript.latin;
-    }
-  }
+
 }
 
-enum LangageScript{
-  latin,
-  chinese,
-  devanagiri,
-  japanese,
-  korean,
-}
