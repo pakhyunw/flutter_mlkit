@@ -97,27 +97,18 @@ class ScalableOCRState extends State<ScalableOCR> {
   @override
   Widget build(BuildContext context) {
     double sizeH = MediaQuery.of(context).size.height / 100;
-    return Padding(
-        padding: EdgeInsets.all(sizeH * 3),
-        child: SingleChildScrollView(
-          child: Column(
-            children: [
-              _controller == null ||
-                  _controller?.value == null ||
-                  _controller?.value.isInitialized == false
-                  ? Container(
-                width: MediaQuery.of(context).size.width,
-                height: widget.boxHeight ?? sizeH * 19,
-                decoration: BoxDecoration(
-                  color: Colors.grey,
-                  borderRadius: BorderRadius.circular(17),
-                ),
-              )
-                  : _liveFeedBody(),
-              SizedBox(height: sizeH * 2),
-            ],
-          ),
-        ));
+    return _controller == null ||
+        _controller?.value == null ||
+        _controller?.value.isInitialized == false
+        ? Container(
+      width: MediaQuery.of(context).size.width,
+      height: widget.boxHeight ?? sizeH * 19,
+      decoration: BoxDecoration(
+        color: Colors.grey,
+        borderRadius: BorderRadius.circular(17),
+      ),
+    )
+        : _liveFeedBody();
   }
 
   // Body of live camera stream
