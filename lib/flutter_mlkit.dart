@@ -52,10 +52,7 @@ class FlutterMlkit {
 
   static Widget scalableOCR({
     required Function getScannedText,
-    double boxLeftOff = 4,
-    double boxRightOff = 4,
-    double boxBottomOff = 2.7,
-    double boxTopOff = 2.7,
+    Size? roiBoxSize,
     double? boxHeight,
     Function? getRawData,
     Paint? paintboxCustom,
@@ -66,11 +63,7 @@ class FlutterMlkit {
     LanguageScript? languageScript,
   }) {
     return ScalableOCR(
-      boxLeftOff: boxLeftOff,
-      boxRightOff: boxRightOff,
-      boxBottomOff: boxBottomOff,
-      boxTopOff: boxTopOff,
-      boxHeight: boxHeight,
+      roiBoxSize: roiBoxSize,
       getScannedText: getScannedText,
       getRawData: getRawData,
       paintboxCustom: paintboxCustom,

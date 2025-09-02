@@ -24,7 +24,7 @@ class MyApp extends StatelessWidget {
 class Home extends StatelessWidget {
 
   String text = "";
-  final StreamController<String> controller = StreamController<String>();
+  final controller = StreamController<String>.broadcast();
 
   void setText(value) {
     controller.add(value);
@@ -51,30 +51,26 @@ class Home extends StatelessWidget {
                       },
                       child: Text('QR Scan')),
                   ElevatedButton(
-                      onPressed: () async {
+                      onPressed: () {
                         showDialog(
                             context: context,
                             builder: (BuildContext context) {
                               return Dialog(
                               key: UniqueKey(),
-                                child : Scaffold(
-                                    appBar: AppBar(
-                                      title: Text('OCR'),
-                                    ),
-                                    body: Center(
+                                child : SizedBox(
+                                    height: MediaQuery.of(context).size.height / 2,
+                                    width: MediaQuery.of(context).size.width * 0.9,
+                                    child: Center(
                                       child: Column(
                                         mainAxisAlignment: MainAxisAlignment.start,
                                         children: <Widget>[
                                           FlutterMlkit.scalableOCR(
                                               paintboxCustom: Paint()
                                                 ..style = PaintingStyle.stroke
-                                                ..strokeWidth = 4.0
-                                                ..color = const Color.fromARGB(153, 102, 160, 241),
-                                              boxLeftOff: 5,
-                                              boxBottomOff: 2.5,
-                                              boxRightOff: 5,
-                                              boxTopOff: 2.5,
-                                              boxHeight: MediaQuery.of(context).size.height / 3,
+                                                ..strokeWidth = 2.0
+                                                ..color = Colors.amberAccent,
+                                              boxHeight: MediaQuery.of(context).size.height / 4,
+                                              roiBoxSize: Size(400,200),
                                               getRawData: (value) {
                                                 inspect(value);
                                               },

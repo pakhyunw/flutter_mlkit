@@ -9,15 +9,10 @@ import 'coordinates_translator.dart';
 class TextRecognizerPainter extends CustomPainter {
   TextRecognizerPainter(this.recognizedText, this.absoluteImageSize,
       this.rotation, this.renderBox, this.getScannedText,
-      {this.boxLeftOff = 4,
-        this.boxBottomOff = 2,
-        this.boxRightOff = 4,
-        this.boxTopOff = 2,
-        this.getRawData,
-        this.paintboxCustom,
-        required this.isLiveFeed
-
-      });
+      {this.roiBoxSize = const Size(400, 200),
+      this.getRawData,
+      this.paintboxCustom,
+      required this.isLiveFeed});
 
   /// ML kit recognizer
   final RecognizedText recognizedText;
@@ -37,17 +32,8 @@ class TextRecognizerPainter extends CustomPainter {
   /// Scanned text string
   String scannedText = "";
 
-  /// Offset on recalculated image left
-  final double boxLeftOff;
-
-  /// Offset on recalculated image bottom
-  final double boxBottomOff;
-
-  /// Offset on recalculated image right
-  final double boxRightOff;
-
-  /// Offset on recalculated image top
-  final double boxTopOff;
+  /// box Size
+  final Size? roiBoxSize;
 
   /// Get raw data from scanned image
   final Function? getRawData;
@@ -57,58 +43,29 @@ class TextRecognizerPainter extends CustomPainter {
 
   final bool isLiveFeed;
 
-
   @override
   void paint(Canvas canvas, Size size) {
     scannedText = "";
 
-    final Paint background = Paint()
-      ..color = const Color.fromARGB(153, 98, 152, 227);
+    final Paint background = Paint()..color = Colors.amberAccent;
 
-    final Size boxSize = renderBox.size;
+    final double roiBoxWidth = roiBoxSize!.width / 2;
+    final double roiBoxHeight = roiBoxSize!.height / 2;
 
-    final Offset offset = renderBox.localToGlobal(Offset.zero);
-    var siz = getRatioHeight(rotation, size, absoluteImageSize);
-    var siz1 = getRatioWidth(rotation, size, absoluteImageSize);
-
-    var currentScannerBoxWidth = boxSize.width / siz1;
-    var currentScannerBoxHeight = boxSize.height / siz;
-    var currentXOffset = offset.dx * siz1;
-    var currentYOffset = offset.dy * siz;
-
-    final boxLeft = translateX(
-        (currentScannerBoxWidth / boxLeftOff) + currentXOffset,
-        rotation,
-        size,
-        absoluteImageSize);
-    final boxTop = translateY(
-        (currentScannerBoxHeight / boxTopOff) + currentYOffset,
-        rotation,
-        size,
-        absoluteImageSize);
-    final boxRight = translateX(
-        (currentScannerBoxWidth + currentXOffset) -
-            (currentScannerBoxWidth / boxRightOff),
-        rotation,
-        size,
-        absoluteImageSize);
-    final boxBottom = translateY(
-        (currentScannerBoxHeight + currentYOffset) -
-            (currentScannerBoxHeight / boxBottomOff),
-        rotation,
-        size,
-        absoluteImageSize);
+    final double boxLeft = (size.width - roiBoxWidth) / 2;
+    final double boxTop = (size.height - roiBoxHeight) / 2;
+    final double boxRight = boxLeft + roiBoxWidth;
+    final double boxBottom = boxTop + roiBoxHeight;
 
     final Paint paintbox = paintboxCustom ??
         (Paint()
           ..style = PaintingStyle.stroke
           ..strokeWidth = 2.0
           ..color = Colors.amberAccent);
+    final rect = RRect.fromLTRBR(
+        boxLeft, boxTop, boxRight, boxBottom, const Radius.circular(15));
 
-    canvas.drawRRect(
-      RRect.fromLTRBR(boxLeft, boxTop, boxRight, boxBottom, const Radius.circular(15)),
-      paintbox,
-    );
+    canvas.drawRRect(rect, paintbox,);
     List textBlocks = [];
     for (final textBunk in recognizedText.blocks) {
       for (final element in textBunk.lines) {
@@ -136,7 +93,7 @@ class TextRecognizerPainter extends CustomPainter {
             );
             builder.pushStyle(
                 ui.TextStyle(color: Colors.white, background: background));
-            if(isLiveFeed) builder.addText(parsedText);
+            if (isLiveFeed) builder.addText(parsedText);
             builder.pop();
 
             canvas.drawParagraph(

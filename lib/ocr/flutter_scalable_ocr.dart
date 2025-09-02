@@ -13,10 +13,7 @@ import 'package:camera/camera.dart';
 class ScalableOCR extends StatefulWidget {
   const ScalableOCR(
       {super.key,
-        this.boxLeftOff = 4,
-        this.boxRightOff = 4,
-        this.boxBottomOff = 2.7,
-        this.boxTopOff = 2.7,
+        this.roiBoxSize,
         this.boxHeight,
         required this.getScannedText,
         this.isLiveFeed,
@@ -28,17 +25,7 @@ class ScalableOCR extends StatefulWidget {
         this.languageScript
       });
 
-  /// Offset on recalculated image left
-  final double boxLeftOff;
-
-  /// Offset on recalculated image bottom
-  final double boxBottomOff;
-
-  /// Offset on recalculated image right
-  final double boxRightOff;
-
-  /// Offset on recalculated image top
-  final double boxTopOff;
+  final Size? roiBoxSize;
 
   /// Height of narrowed image
   final double? boxHeight;
@@ -207,12 +194,11 @@ class ScalableOCRState extends State<ScalableOCR> {
   // Start camera stream function
   Future startLiveFeed() async {
     _cameras = await availableCameras();
-    _controller = CameraController(
-        _cameras[widget.cameraSelection], ResolutionPreset.max);
     final camera = _cameras[widget.cameraSelection];
+
     _controller = CameraController(
       camera,
-      ResolutionPreset.high,
+      ResolutionPreset.high,   // high 만 사용
       enableAudio: false,
       imageFormatGroup: Platform.isAndroid
           ? ImageFormatGroup.nv21 // for Android
@@ -455,10 +441,7 @@ class ScalableOCRState extends State<ScalableOCR> {
           widget.getRawData!(value);
         }
       },
-          boxBottomOff: widget.boxBottomOff,
-          boxTopOff: widget.boxTopOff,
-          boxRightOff: widget.boxRightOff,
-          boxLeftOff: widget.boxRightOff,
+          roiBoxSize: widget.roiBoxSize,
           paintboxCustom: widget.paintboxCustom);
 
       customPaint = CustomPaint(painter: painter);
