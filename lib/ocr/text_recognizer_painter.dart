@@ -103,9 +103,10 @@ class TextRecognizerPainter extends CustomPainter {
         (Paint()
           ..style = PaintingStyle.stroke
           ..strokeWidth = 2.0
-          ..color = const Color.fromARGB(153, 102, 160, 241));
-    canvas.drawRect(
-      Rect.fromLTRB(boxLeft, boxTop, boxRight, boxBottom),
+          ..color = Colors.amberAccent);
+
+    canvas.drawRRect(
+      RRect.fromLTRBR(boxLeft, boxTop, boxRight, boxBottom, const Radius.circular(15)),
       paintbox,
     );
     List textBlocks = [];
