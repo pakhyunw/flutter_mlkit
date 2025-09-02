@@ -130,61 +130,27 @@ class ScalableOCRState extends State<ScalableOCR> {
       return SizedBox(
         height: widget.boxHeight ?? MediaQuery.of(context).size.height / 5,
         child: Stack(
-          alignment: Alignment.topCenter,
-          clipBehavior: Clip.none,
-          fit: StackFit.expand,
+          alignment: Alignment.center,
           children: <Widget>[
             Center(
               child: SizedBox(
-                height:
-                widget.boxHeight ?? MediaQuery.of(context).size.height / 5,
+                height: widget.boxHeight ?? MediaQuery.of(context).size.height / 5,
+                width: MediaQuery.of(context).size.width,
                 key: cameraPrev,
-                child: AspectRatio(
-                  aspectRatio: 1 / previewAspectRatio,
-                  child: GestureDetector(
-                    behavior: HitTestBehavior.translucent,
-                    child: ClipRRect(
-                      borderRadius:
-                      const BorderRadius.all(Radius.circular(16.0)),
-                      child: Transform.scale(
-                        scale: cameraController.value.aspectRatio /
-                            previewAspectRatio,
-                        child: Center(
-                          child: CameraPreview(cameraController, child:
-                          LayoutBuilder(builder: (BuildContext context,
-                              BoxConstraints constraints) {
-                            maxWidth = constraints.maxWidth;
-                            maxHeight = constraints.maxHeight;
-
-                            return GestureDetector(
-                              behavior: HitTestBehavior.opaque,
-                              onScaleStart: _handleScaleStart,
-                              onScaleUpdate: _handleScaleUpdate,
-                              onTapDown: (TapDownDetails details) =>
-                                  onViewFinderTap(details, constraints),
-                            );
-                          })),
-                        ),
-                      ),
+                child: ClipRRect(
+                  borderRadius:
+                  const BorderRadius.all(Radius.circular(16.0)),
+                  child: FittedBox(
+                    fit: BoxFit.cover,
+                    child: SizedBox(
+                      height: _controller!.value.previewSize!.width,
+                      width: _controller!.value.previewSize!.height,
+                      child: CameraPreview(cameraController, child: customPaint),
                     ),
                   ),
                 ),
               ),
             ),
-            if (customPaint != null)
-              LayoutBuilder(
-                  builder: (BuildContext context, BoxConstraints constraints) {
-                    maxWidth = constraints.maxWidth;
-                    maxHeight = constraints.maxHeight;
-                    return GestureDetector(
-                      behavior: HitTestBehavior.opaque,
-                      onScaleStart: _handleScaleStart,
-                      onScaleUpdate: _handleScaleUpdate,
-                      onTapDown: (TapDownDetails details) =>
-                          onViewFinderTap(details, constraints),
-                      child: customPaint!,
-                    );
-                  }),
           ],
         ),
       );
@@ -213,6 +179,10 @@ class ScalableOCRState extends State<ScalableOCR> {
       } else {
         _controller?.unlockCaptureOrientation();
       }
+
+      _controller?.setFocusMode(FocusMode.auto);
+      _controller?.setZoomLevel(2.0);
+
 
       if (_controller != null) {
         if (widget.torchOn != null) {
@@ -436,7 +406,8 @@ class ScalableOCRState extends State<ScalableOCR> {
           inputImage.metadata!.rotation,
           renderBox, (value) {
         widget.getScannedText(value);
-      },isLiveFeed: _isLiveFeed,  getRawData: (value) {
+      }, CameraLensDirection.back,
+      isLiveFeed: _isLiveFeed,  getRawData: (value) {
         if (widget.getRawData != null) {
           widget.getRawData!(value);
         }

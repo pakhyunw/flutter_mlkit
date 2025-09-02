@@ -67,10 +67,11 @@ class Home extends StatelessWidget {
                                           FlutterMlkit.scalableOCR(
                                               paintboxCustom: Paint()
                                                 ..style = PaintingStyle.stroke
-                                                ..strokeWidth = 2.0
+                                                ..strokeWidth = 4.0
                                                 ..color = Colors.amberAccent,
                                               boxHeight: MediaQuery.of(context).size.height / 4,
-                                              roiBoxSize: Size(400,200),
+                                              roiBoxSize: Size(800,400),
+                                              languageScript: LanguageScript.korean,
                                               getRawData: (value) {
                                                 inspect(value);
                                               },
