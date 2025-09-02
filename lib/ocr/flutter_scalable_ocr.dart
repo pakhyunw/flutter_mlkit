@@ -1,3 +1,5 @@
+library flutter_mlkit;
+
 import 'dart:developer';
 import 'dart:io';
 
