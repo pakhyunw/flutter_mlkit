@@ -63,6 +63,7 @@ class FlutterMlkit {
     LanguageScript? languageScript,
   }) {
     return ScalableOCR(
+      boxHeight:boxHeight,
       roiBoxSize: roiBoxSize,
       getScannedText: getScannedText,
       getRawData: getRawData,
