@@ -114,6 +114,11 @@ class ScalableOCRState extends State<ScalableOCR> {
   // Body of live camera stream
   Widget _liveFeedBody() {
     final CameraController? cameraController = _controller;
+    final Size size = MediaQuery.of(context).size;
+    final double width = size.width;
+    final double height = size.height;
+    final bool isLandscape = width > height;
+
     if (cameraController == null || !cameraController.value.isInitialized) {
       return const Text('Tap a camera');
     } else {
@@ -134,8 +139,12 @@ class ScalableOCRState extends State<ScalableOCR> {
                   child: FittedBox(
                     fit: BoxFit.cover,
                     child: SizedBox(
-                      height: _controller!.value.previewSize!.width,
-                      width: _controller!.value.previewSize!.height,
+                      width: isLandscape
+                          ? _controller!.value.previewSize!.width
+                          : _controller!.value.previewSize!.height,
+                      height: !isLandscape
+                          ? _controller!.value.previewSize!.width
+                          : _controller!.value.previewSize!.height,
                       child: CameraPreview(cameraController, child: customPaint),
                     ),
                   ),
