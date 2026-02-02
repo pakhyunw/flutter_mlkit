@@ -3,7 +3,6 @@ import 'dart:developer';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_mlkit/flutter_mlkit.dart';
-import 'package:flutter_mlkit/vision_detector_views/barcode_scanner_view.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -47,7 +46,8 @@ class Home extends StatelessWidget {
                 children: [
                   ElevatedButton(
                       onPressed: () async {
-                        await FlutterMlkit.barcodeScan(context,(value)=>print(value), isContinue: true, );
+                        await FlutterMlkit.barcodeScan(context,(value)=>print(value.message), isContinue: true, );
+
                       },
                       child: Text('QR Scan')),
                   ElevatedButton(

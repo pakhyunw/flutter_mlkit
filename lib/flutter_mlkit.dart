@@ -4,6 +4,7 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:google_mlkit_text_recognition/google_mlkit_text_recognition.dart';
+import 'package:google_mlkit_barcode_scanning/google_mlkit_barcode_scanning.dart';
 
 import 'ocr/flutter_scalable_ocr.dart';
 import 'vision_detector_views/barcode_scanner_view.dart' hide LangageScript;
@@ -79,9 +80,11 @@ class FlutterMlkit {
 
 class BarcodeScanResult {
   final String message;
+  final BarcodeType type;
   final bool isContinue;
+  final dynamic raw;
 
-  BarcodeScanResult({required this.message, required this.isContinue});
+  BarcodeScanResult({required this.message, required this.type, required this.raw, required this.isContinue});
 }
 
 enum LanguageScript{

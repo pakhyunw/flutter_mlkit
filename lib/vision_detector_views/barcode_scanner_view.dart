@@ -151,10 +151,49 @@ class BarcodeScannerViewState extends State<BarcodeScannerView> {
                 if (!_receiver.isClosed) {
                   if (!_results.contains(code)) {
                     _results.add(code);
+                    dynamic raw = barcode.value;
+                    switch (barcode.type) {
+                      case BarcodeType.wifi:
+                        raw = barcode.value as BarcodeWifi;
+                        break;
+                      case BarcodeType.url:
+                        raw = barcode.value as BarcodeUrl;
+                        break;
+                      case BarcodeType.unknown:
+                        raw = barcode.value;
+                        break;
+                      case BarcodeType.contactInfo:
+                        raw = barcode.value as BarcodeContactInfo;
+                        break;
+                      case BarcodeType.email:
+                        raw = barcode.value as BarcodeEmail;
+                        break;
+                      case BarcodeType.phone:
+                        raw = barcode.value as BarcodePhone;
+                        break;
+                      case BarcodeType.sms:
+                        raw = barcode.value as BarcodeSMS;
+                        break;
+
+                      case BarcodeType.geoCoordinates:
+                        raw = barcode.value as BarcodeGeoPoint;
+                        break;
+                      case BarcodeType.calendarEvent:
+                        raw = barcode.value as BarcodeCalenderEvent;
+                        break;
+                      case BarcodeType.driverLicense:
+                        raw = barcode.value as BarcodeDriverLicense;
+                        break;
+                      case BarcodeType.text:
+                      case BarcodeType.isbn:
+                      case BarcodeType.product:
+                        raw = barcode.value;
+                        break;
+                    }
                     _receiver
-                        .add(BarcodeScanResult(message: code, isContinue: isContinue));
+                        .add(BarcodeScanResult(message: code, isContinue: isContinue, type: barcode.type, raw: raw));
                     _countReceiver
-                        .add(BarcodeScanResult(message: code, isContinue: isContinue));
+                        .add(BarcodeScanResult(message: code, isContinue: isContinue, type: barcode.type, raw: raw));
                   }
                 }
                 if (isContinue) {
@@ -173,10 +212,49 @@ class BarcodeScannerViewState extends State<BarcodeScannerView> {
         if (!_receiver.isClosed) {
           if (!_results.contains(barcode.rawValue)) {
             _results.add(barcode.rawValue);
+            dynamic raw = barcode.value;
+            switch (barcode.type) {
+              case BarcodeType.wifi:
+                raw = barcode.value as BarcodeWifi;
+                break;
+              case BarcodeType.url:
+                raw = barcode.value as BarcodeUrl;
+                break;
+              case BarcodeType.unknown:
+                raw = barcode.value;
+                break;
+              case BarcodeType.contactInfo:
+                raw = barcode.value as BarcodeContactInfo;
+                break;
+              case BarcodeType.email:
+                raw = barcode.value as BarcodeEmail;
+                break;
+              case BarcodeType.phone:
+                raw = barcode.value as BarcodePhone;
+                break;
+              case BarcodeType.sms:
+                raw = barcode.value as BarcodeSMS;
+                break;
+
+              case BarcodeType.geoCoordinates:
+                raw = barcode.value as BarcodeGeoPoint;
+                break;
+              case BarcodeType.calendarEvent:
+                raw = barcode.value as BarcodeCalenderEvent;
+                break;
+              case BarcodeType.driverLicense:
+                raw = barcode.value as BarcodeDriverLicense;
+                break;
+              case BarcodeType.text:
+              case BarcodeType.isbn:
+              case BarcodeType.product:
+                raw = barcode.value;
+                break;
+            }
             _receiver.add(BarcodeScanResult(
-                message: barcode.rawValue!, isContinue: isContinue));
+                message: barcode.rawValue!, isContinue: isContinue, type: barcode.type, raw: raw));
             _countReceiver.add(BarcodeScanResult(
-                message: barcode.rawValue!, isContinue: isContinue));
+                message: barcode.rawValue!, isContinue: isContinue, type: barcode.type, raw: raw));
           }
         }
       }
