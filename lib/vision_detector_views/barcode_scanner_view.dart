@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:io';
+import 'dart:typed_data';
 import 'package:camera/camera.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -91,50 +92,34 @@ class BarcodeScannerViewState extends State<BarcodeScannerView> {
       _text = '';
     });
 
-    final barcodesOriginal = await _barcodeScanner.processImage(inputImage);
-    List<Barcode> barcodes = [];
-    if (barcodesOriginal.isEmpty) {
-      var imageBytes = inputImage.toJson()['bytes'];
-      late InputImage invertedInputImage;
-      if (imageBytes == null) {
-        final file = File(inputImage.toJson()['path']);
+    // 1. Try scanning the original image
+    var barcodes = await _barcodeScanner.processImage(inputImage);
+
+    // 2. If no barcodes found, try scanning an inverted version (Fast fallback)
+    if (barcodes.isEmpty) {
+      final bytes = inputImage.bytes;
+      if (bytes != null) {
+        final invertedBytes = _fastInvertColors(bytes, inputImage.metadata);
+        final invertedInputImage = InputImage.fromBytes(
+          bytes: invertedBytes,
+          metadata: inputImage.metadata!,
+        );
+        barcodes = await _barcodeScanner.processImage(invertedInputImage);
+      } else if (inputImage.filePath != null) {
+        final file = File(inputImage.filePath!);
         final imageBytes = await file.readAsBytes();
         final image = img.decodeImage(imageBytes);
-        if (image == null) {
-          print('Could not decode image.');
-          return;
+        if (image != null) {
+          img.invert(image);
+          final jpgBytes = Uint8List.fromList(img.encodeJpg(image));
+          final invertedPath = '${file.path}_inverted.jpg';
+          await File(invertedPath).writeAsBytes(jpgBytes);
+          final invertedInputImage = InputImage.fromFilePath(invertedPath);
+          barcodes = await _barcodeScanner.processImage(invertedInputImage);
         }
-        var invertedImage = img.invert(image);
-        final jpgBytes = Uint8List.fromList(img.encodeJpg(invertedImage));
-        final invertedPath = '${file.path}_inverted.jpg';
-        await File(invertedPath).writeAsBytes(jpgBytes);
-        invertedInputImage = InputImage.fromFilePath(invertedPath);
-
-      } else {
-        final invertedBytes = _invertColors(imageBytes, inputImage.metadata);
-        // Invert image colors
-        invertedInputImage = InputImage.fromBytes(
-          bytes: invertedBytes,
-          metadata: InputImageMetadata(
-            size: inputImage.metadata?.size ?? const Size(1024, 768),
-            rotation: inputImage.metadata?.rotation ??
-                InputImageRotation.rotation0deg,
-            format: inputImage.metadata?.format ?? InputImageFormat.nv21,
-            bytesPerRow: inputImage.metadata?.bytesPerRow ?? 0,
-          ),
-        );
       }
-
-      final barcodesInverted =
-          await _barcodeScanner.processImage(invertedInputImage);
-
-      // Combine results from both images
-      barcodes = barcodesInverted;
-    } else {
-      barcodes = barcodesOriginal;
     }
 
-    barcodes = barcodes.isNotEmpty ? [barcodes[0]] : [];
     if (inputImage.metadata?.size != null &&
         inputImage.metadata?.rotation != null) {
       final painter = BarcodeDetectorPainter(
@@ -142,69 +127,66 @@ class BarcodeScannerViewState extends State<BarcodeScannerView> {
         inputImage.metadata!.size,
         inputImage.metadata!.rotation,
         _cameraLensDirection,
-            (Barcode barcode){
-              if (!_isScanned) {
-                _canProcess = false;
-                _isScanned = true;
-                String code = '';
-                  code += barcode.displayValue!;
-                if (!_receiver.isClosed) {
-                  if (!_results.contains(code)) {
-                    _results.add(code);
-                    dynamic raw = barcode.value;
-                    switch (barcode.type) {
-                      case BarcodeType.wifi:
-                        raw = barcode.value as BarcodeWifi;
-                        break;
-                      case BarcodeType.url:
-                        raw = barcode.value as BarcodeUrl;
-                        break;
-                      case BarcodeType.unknown:
-                        raw = barcode.value;
-                        break;
-                      case BarcodeType.contactInfo:
-                        raw = barcode.value as BarcodeContactInfo;
-                        break;
-                      case BarcodeType.email:
-                        raw = barcode.value as BarcodeEmail;
-                        break;
-                      case BarcodeType.phone:
-                        raw = barcode.value as BarcodePhone;
-                        break;
-                      case BarcodeType.sms:
-                        raw = barcode.value as BarcodeSMS;
-                        break;
-
-                      case BarcodeType.geoCoordinates:
-                        raw = barcode.value as BarcodeGeoPoint;
-                        break;
-                      case BarcodeType.calendarEvent:
-                        raw = barcode.value as BarcodeCalenderEvent;
-                        break;
-                      case BarcodeType.driverLicense:
-                        raw = barcode.value as BarcodeDriverLicense;
-                        break;
-                      case BarcodeType.text:
-                      case BarcodeType.isbn:
-                      case BarcodeType.product:
-                        raw = barcode.value;
-                        break;
-                    }
-                    _receiver
-                        .add(BarcodeScanResult(message: code, isContinue: isContinue, type: barcode.type, raw: raw));
-                    _countReceiver
-                        .add(BarcodeScanResult(message: code, isContinue: isContinue, type: barcode.type, raw: raw));
-                  }
+        (Barcode barcode) {
+          if (!_isScanned) {
+            _canProcess = false;
+            _isScanned = true;
+            String code = barcode.displayValue ?? '';
+            if (!_receiver.isClosed) {
+              if (!_results.contains(code)) {
+                _results.add(code);
+                dynamic raw = barcode.value;
+                switch (barcode.type) {
+                  case BarcodeType.wifi:
+                    raw = barcode.value as BarcodeWifi;
+                    break;
+                  case BarcodeType.url:
+                    raw = barcode.value as BarcodeUrl;
+                    break;
+                  case BarcodeType.contactInfo:
+                    raw = barcode.value as BarcodeContactInfo;
+                    break;
+                  case BarcodeType.email:
+                    raw = barcode.value as BarcodeEmail;
+                    break;
+                  case BarcodeType.phone:
+                    raw = barcode.value as BarcodePhone;
+                    break;
+                  case BarcodeType.sms:
+                    raw = barcode.value as BarcodeSMS;
+                    break;
+                  case BarcodeType.geoCoordinates:
+                    raw = barcode.value as BarcodeGeoPoint;
+                    break;
+                  case BarcodeType.calendarEvent:
+                    raw = barcode.value as BarcodeCalenderEvent;
+                    break;
+                  case BarcodeType.driverLicense:
+                    raw = barcode.value as BarcodeDriverLicense;
+                    break;
+                  default:
+                    raw = barcode.value;
                 }
-                if (isContinue) {
-                  _canProcess = true;
-                  _isScanned = false;
-                }
+                _receiver.add(BarcodeScanResult(
+                    message: code,
+                    isContinue: isContinue,
+                    type: barcode.type,
+                    raw: raw));
+                _countReceiver.add(BarcodeScanResult(
+                    message: code,
+                    isContinue: isContinue,
+                    type: barcode.type,
+                    raw: raw));
               }
-            },
+            }
+            if (isContinue) {
+              _canProcess = true;
+              _isScanned = false;
+            }
+          }
+        },
       );
       _customPaint = CustomPaint(painter: painter);
-
     } else {
       String text = 'Barcodes found: ${barcodes.length}\n\n';
       for (final barcode in barcodes) {
@@ -220,9 +202,6 @@ class BarcodeScannerViewState extends State<BarcodeScannerView> {
               case BarcodeType.url:
                 raw = barcode.value as BarcodeUrl;
                 break;
-              case BarcodeType.unknown:
-                raw = barcode.value;
-                break;
               case BarcodeType.contactInfo:
                 raw = barcode.value as BarcodeContactInfo;
                 break;
@@ -235,7 +214,6 @@ class BarcodeScannerViewState extends State<BarcodeScannerView> {
               case BarcodeType.sms:
                 raw = barcode.value as BarcodeSMS;
                 break;
-
               case BarcodeType.geoCoordinates:
                 raw = barcode.value as BarcodeGeoPoint;
                 break;
@@ -245,11 +223,8 @@ class BarcodeScannerViewState extends State<BarcodeScannerView> {
               case BarcodeType.driverLicense:
                 raw = barcode.value as BarcodeDriverLicense;
                 break;
-              case BarcodeType.text:
-              case BarcodeType.isbn:
-              case BarcodeType.product:
+              default:
                 raw = barcode.value;
-                break;
             }
             _receiver.add(BarcodeScanResult(
                 message: barcode.rawValue!, isContinue: isContinue, type: barcode.type, raw: raw));
@@ -259,7 +234,6 @@ class BarcodeScannerViewState extends State<BarcodeScannerView> {
         }
       }
       _text = text;
-
       _customPaint = null;
     }
     _isBusy = false;
@@ -268,103 +242,33 @@ class BarcodeScannerViewState extends State<BarcodeScannerView> {
     }
   }
 
-  Uint8List _invertColors(Uint8List bytes, InputImageMetadata? metadata) {
-    switch (metadata?.format) {
-      case InputImageFormat.nv21:
-        return _invertColorsNv21(bytes);
-      case InputImageFormat.yv12:
-        return _invertColorsYv12(bytes);
-      case InputImageFormat.yuv_420_888:
-        return _invertColorsYuv420888(
-            bytes, metadata!.size.width.toInt(), metadata.size.height.toInt());
-      case InputImageFormat.yuv420:
-        return _invertColorsYuv420(
-            bytes, metadata!.size.width.toInt(), metadata.size.height.toInt());
-      case InputImageFormat.bgra8888:
-      default:
-        return _invertColorsBgra8888(bytes);
-    }
-  }
+  Uint8List _fastInvertColors(Uint8List bytes, InputImageMetadata? metadata) {
+    final inverted = Uint8List.fromList(bytes);
+    final int length;
 
-  Uint8List _invertColorsBgra8888(Uint8List bytes) {
-    final length = bytes.length;
-    final invertedBytes = Uint8List(length);
-    for (int i = 0; i < length; i += 4) {
-      invertedBytes[i] = 255 - bytes[i]; // B
-      invertedBytes[i + 1] = 255 - bytes[i + 1]; // G
-      invertedBytes[i + 2] = 255 - bytes[i + 2]; // R
-      invertedBytes[i + 3] = bytes[i + 3]; // A (unchanged)
-    }
-    return invertedBytes;
-  }
-
-  Uint8List _invertColorsYuv420(Uint8List bytes, int width, int height) {
-    final invertedBytes = Uint8List.fromList(bytes);
-    final frameSize = width * height;
-
-    // Invert Y values
-    for (int i = 0; i < frameSize; i++) {
-      invertedBytes[i] = 255 - invertedBytes[i];
+    // For YUV formats, we only need to invert the Y (Luminance) plane for barcode scanning
+    if (metadata != null &&
+        (metadata.format == InputImageFormat.nv21 ||
+            metadata.format == InputImageFormat.yuv_420_888 ||
+            metadata.format == InputImageFormat.yuv420)) {
+      length = metadata.size.width.toInt() * metadata.size.height.toInt();
+    } else {
+      length = bytes.length;
     }
 
-    // Invert UV values
-    for (int i = frameSize; i < invertedBytes.length; i++) {
-      invertedBytes[i] = 255 - invertedBytes[i];
+    // Optimization: Use Uint64List to process 8 bytes at a time
+    final u64Length = length ~/ 8;
+    final u64Data = Uint64List.view(inverted.buffer, 0, u64Length);
+    for (int i = 0; i < u64Data.length; i++) {
+      u64Data[i] = ~u64Data[i];
     }
 
-    return invertedBytes;
-  }
-
-  Uint8List _invertColorsYuv420888(Uint8List bytes, int width, int height) {
-    final invertedBytes = Uint8List.fromList(bytes);
-    final ySize = width * height;
-    final uvSize = ySize ~/ 4;
-
-    // Invert Y values
-    for (int i = 0; i < ySize; i++) {
-      invertedBytes[i] = 255 - invertedBytes[i];
+    // Handle remaining bytes
+    for (int i = u64Length * 8; i < length; i++) {
+      inverted[i] = 255 - inverted[i];
     }
 
-    // Invert U and V values
-    for (int i = ySize; i < ySize + uvSize * 2; i++) {
-      invertedBytes[i] = 255 - invertedBytes[i];
-    }
-
-    return invertedBytes;
-  }
-
-  Uint8List _invertColorsYv12(Uint8List bytes) {
-    final invertedBytes = Uint8List.fromList(bytes);
-    final frameSize = invertedBytes.length * 2 ~/ 3;
-
-    // Invert Y values
-    for (int i = 0; i < frameSize; i++) {
-      invertedBytes[i] = 255 - invertedBytes[i];
-    }
-
-    // Invert VU values
-    for (int i = frameSize; i < invertedBytes.length; i++) {
-      invertedBytes[i] = 255 - invertedBytes[i];
-    }
-
-    return invertedBytes;
-  }
-
-  Uint8List _invertColorsNv21(Uint8List bytes) {
-    final invertedBytes = Uint8List.fromList(bytes);
-    final frameSize = invertedBytes.length * 2 ~/ 3;
-
-    // Invert Y values
-    for (int i = 0; i < frameSize; i++) {
-      invertedBytes[i] = 255 - invertedBytes[i];
-    }
-
-    // Invert UV values
-    for (int i = frameSize; i < invertedBytes.length; i++) {
-      invertedBytes[i] = 255 - invertedBytes[i];
-    }
-
-    return invertedBytes;
+    return inverted;
   }
 }
 
