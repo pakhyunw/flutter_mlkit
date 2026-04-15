@@ -1,31 +1,28 @@
 import 'dart:async';
 import 'dart:io';
-import 'dart:typed_data';
 import 'package:camera/camera.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
-import 'package:flutter_mlkit/flutter_mlkit.dart';
 import 'package:google_mlkit_barcode_scanning/google_mlkit_barcode_scanning.dart';
-import 'package:image/image.dart' as img;
-
+import '../gs1_parser.dart';
 import 'detector_view.dart';
 import 'painters/barcode_detector_painter.dart';
+import 'painters/coordinates_translator.dart';
+
+enum ScanMode { single, continuous, find, multi }
 
 class BarcodeScannerView extends StatefulWidget {
+  final ScanMode mode;
+  final Map<String, Map<String, dynamic>> barcodeMapList;
+  final Widget Function(Map<String, dynamic> parsedData, bool isTarget) overlayWidgetBuilder;
+  final Function(List<Map<String, dynamic>> results)? onComplete;
+
   BarcodeScannerView({
     super.key,
-    required this.receiver,
-    required this.isContinue,
-    this.codeScanString,
-    this.singleScanString,
-    this.continuousScanString,
+    required this.mode,
+    this.barcodeMapList = const {},
+    required this.overlayWidgetBuilder,
+    this.onComplete,
   });
-
-  final StreamController<BarcodeScanResult> receiver;
-  final bool isContinue;
-  String? codeScanString;
-  String? singleScanString;
-  String? continuousScanString;
 
   @override
   BarcodeScannerViewState createState() => BarcodeScannerViewState();
@@ -36,246 +33,248 @@ class BarcodeScannerViewState extends State<BarcodeScannerView> {
   bool _canProcess = true;
   bool _isBusy = false;
   CustomPaint? _customPaint;
-  String? _text;
   var _cameraLensDirection = CameraLensDirection.back;
-  var _isScanned = false;
-  late final StreamController<BarcodeScanResult> _receiver;
-  final StreamController<BarcodeScanResult> _countReceiver = StreamController();
+  
+  // Scanned barcodes state for AR overlays
+  List<Barcode> _currentBarcodes = [];
+  Size? _imageSize;
+  InputImageRotation? _rotation;
 
-  bool _init = false;
-  Set _results = {};
-
-  @override
-  void initState() {
-    _receiver = widget.receiver;
-    _text = '';
-    _customPaint = null;
-    super.initState();
-  }
+  // Internal state for modes
+  final Set<String> _scannedCodes = {}; // For continuous mode debouncing
+  final List<Map<String, dynamic>> _multiScanResults = []; // For multi mode
+  bool _isFinished = false;
 
   @override
   void dispose() {
     _canProcess = false;
-    _isScanned = false;
-    _text = '';
     _barcodeScanner.close();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
-    return DetectorView(
-      title: 'Barcode Scanner',
-      customPaint: _customPaint,
-      receiver: _countReceiver,
-      isContinue: widget.isContinue,
-      codeScanString: widget.codeScanString,
-      singleScanString: widget.singleScanString,
-      continuousScanString: widget.continuousScanString,
-      text: _text,
-      onImage: _processImage,
-      initialCameraLensDirection: _cameraLensDirection,
-      onCameraLensDirectionChanged: (value) => _cameraLensDirection = value,
+    return Scaffold(
+      body: Stack(
+        children: [
+          DetectorView(
+            title: 'Barcode Scanner',
+            customPaint: _customPaint,
+            receiver: StreamController(), // Legacy, not used here but required by DetectorView
+            isContinue: widget.mode == ScanMode.continuous || widget.mode == ScanMode.multi,
+            onImage: _processImage,
+            initialCameraLensDirection: _cameraLensDirection,
+            onCameraLensDirectionChanged: (value) => _cameraLensDirection = value,
+          ),
+          if (!_isFinished) _buildOverlayWidgets(context),
+          if (widget.mode == ScanMode.multi && !_isFinished) _buildMultiScanButton(),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildOverlayWidgets(BuildContext context) {
+    if (_imageSize == null || _rotation == null || _currentBarcodes.isEmpty) {
+      return const SizedBox.shrink();
+    }
+
+    final Size canvasSize = MediaQuery.of(context).size;
+    // Note: In CameraView, the previewHeight is calculated. 
+    // We assume the canvas for overlays matches the screen size for simplicity, 
+    // but in a real app, you'd match the CameraPreview's displayed area.
+    // Given the constraints, we'll use the full screen but you might need to adjust 
+    // if the camera preview is restricted (e.g. previewHeight in camera_view.dart).
+
+    return Stack(
+      children: _currentBarcodes.map((barcode) {
+        final double left = translateX(
+          barcode.boundingBox.left,
+          canvasSize,
+          _imageSize!,
+          _rotation!,
+          _cameraLensDirection,
+        );
+        final double top = translateY(
+          barcode.boundingBox.top,
+          canvasSize,
+          _imageSize!,
+          _rotation!,
+          _cameraLensDirection,
+        );
+        final double right = translateX(
+          barcode.boundingBox.right,
+          canvasSize,
+          _imageSize!,
+          _rotation!,
+          _cameraLensDirection,
+        );
+        final double bottom = translateY(
+          barcode.boundingBox.bottom,
+          canvasSize,
+          _imageSize!,
+          _rotation!,
+          _cameraLensDirection,
+        );
+
+        final String rawValue = barcode.rawValue ?? '';
+        final Map<String, dynamic> parsedData = GS1Parser.parse(rawValue);
+        final String gtin = parsedData['01'] ?? '';
+
+        bool isTarget = false;
+        if (widget.mode == ScanMode.find) {
+           isTarget = widget.barcodeMapList.containsKey(gtin);
+        }
+
+        // AR Coordinate Correction: Ensure overlay stays within screen bounds
+        const double overlayWidth = 200;
+        const double overlayHeight = 100;
+        
+        double posX = left;
+        double posY = top - overlayHeight - 10;
+
+        if (posY < 50) posY = bottom + 10; // Show below if too high
+        if (posX + overlayWidth > canvasSize.width) posX = canvasSize.width - overlayWidth - 10;
+        if (posX < 10) posX = 10;
+
+        return Positioned(
+          left: posX,
+          top: posY,
+          child: widget.overlayWidgetBuilder(parsedData, isTarget),
+        );
+      }).toList(),
+    );
+  }
+
+  Widget _buildMultiScanButton() {
+    return Positioned(
+      bottom: 100,
+      left: 20,
+      right: 20,
+      child: ElevatedButton(
+        style: ElevatedButton.styleFrom(
+          backgroundColor: Colors.blue,
+          padding: const EdgeInsets.symmetric(vertical: 15),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(30)),
+        ),
+        onPressed: () {
+          setState(() => _isFinished = true);
+          if (widget.onComplete != null) {
+            widget.onComplete!(_multiScanResults);
+          }
+        },
+        child: Text(
+          '${_multiScanResults.length}개 스캔 완료',
+          style: const TextStyle(fontSize: 18, color: Colors.white, fontWeight: FontWeight.bold),
+        ),
+      ),
     );
   }
 
   Future<void> _processImage(InputImage inputImage, bool isContinue) async {
-    if (!_init) {
-      _init = true;
-      return;
-    }
-    if (!_canProcess) return;
-    if (_isBusy) return;
+    if (!_canProcess || _isBusy || _isFinished) return;
     _isBusy = true;
 
-    setState(() {
-      _text = '';
-    });
+    final barcodes = await _barcodeScanner.processImage(inputImage);
 
-    // 1. Try scanning the original image
-    var barcodes = await _barcodeScanner.processImage(inputImage);
+    if (inputImage.metadata?.size != null && inputImage.metadata?.rotation != null) {
+      _imageSize = inputImage.metadata!.size;
+      _rotation = inputImage.metadata!.rotation;
+      
+      final Size canvasSize = MediaQuery.of(context).size;
+      final bool isLandscape = canvasSize.width > canvasSize.height;
+      final double roiBoxSize = (isLandscape ? canvasSize.height : canvasSize.width) * 0.5;
+      final double roiLeft = (canvasSize.width - roiBoxSize) / 2;
+      final double roiTop = (canvasSize.height - roiBoxSize) / 2;
+      final double roiRight = roiLeft + roiBoxSize;
+      final double roiBottom = roiTop + roiBoxSize;
 
-    // 2. If no barcodes found, try scanning an inverted version (Fast fallback)
-    if (barcodes.isEmpty) {
-      final bytes = inputImage.bytes;
-      if (bytes != null) {
-        final invertedBytes = _fastInvertColors(bytes, inputImage.metadata);
-        final invertedInputImage = InputImage.fromBytes(
-          bytes: invertedBytes,
-          metadata: inputImage.metadata!,
-        );
-        barcodes = await _barcodeScanner.processImage(invertedInputImage);
-      } else if (inputImage.filePath != null) {
-        final file = File(inputImage.filePath!);
-        final imageBytes = await file.readAsBytes();
-        final image = img.decodeImage(imageBytes);
-        if (image != null) {
-          img.invert(image);
-          final jpgBytes = Uint8List.fromList(img.encodeJpg(image));
-          final invertedPath = '${file.path}_inverted.jpg';
-          await File(invertedPath).writeAsBytes(jpgBytes);
-          final invertedInputImage = InputImage.fromFilePath(invertedPath);
-          barcodes = await _barcodeScanner.processImage(invertedInputImage);
-        }
-      }
-    }
+      final bool useRoi = widget.mode == ScanMode.single || widget.mode == ScanMode.continuous;
 
-    if (inputImage.metadata?.size != null &&
-        inputImage.metadata?.rotation != null) {
       final painter = BarcodeDetectorPainter(
         barcodes,
-        inputImage.metadata!.size,
-        inputImage.metadata!.rotation,
+        _imageSize!,
+        _rotation!,
         _cameraLensDirection,
-        (Barcode barcode) {
-          if (!_isScanned) {
-            _canProcess = false;
-            _isScanned = true;
-            String code = barcode.displayValue ?? '';
-            if (!_receiver.isClosed) {
-              if (!_results.contains(code)) {
-                _results.add(code);
-                dynamic raw = barcode.value;
-                switch (barcode.type) {
-                  case BarcodeType.wifi:
-                    raw = barcode.value as BarcodeWifi;
-                    break;
-                  case BarcodeType.url:
-                    raw = barcode.value as BarcodeUrl;
-                    break;
-                  case BarcodeType.contactInfo:
-                    raw = barcode.value as BarcodeContactInfo;
-                    break;
-                  case BarcodeType.email:
-                    raw = barcode.value as BarcodeEmail;
-                    break;
-                  case BarcodeType.phone:
-                    raw = barcode.value as BarcodePhone;
-                    break;
-                  case BarcodeType.sms:
-                    raw = barcode.value as BarcodeSMS;
-                    break;
-                  case BarcodeType.geoCoordinates:
-                    raw = barcode.value as BarcodeGeoPoint;
-                    break;
-                  case BarcodeType.calendarEvent:
-                    raw = barcode.value as BarcodeCalenderEvent;
-                    break;
-                  case BarcodeType.driverLicense:
-                    raw = barcode.value as BarcodeDriverLicense;
-                    break;
-                  default:
-                    raw = barcode.value;
-                }
-                _receiver.add(BarcodeScanResult(
-                    message: code,
-                    isContinue: isContinue,
-                    type: barcode.type,
-                    raw: raw));
-                _countReceiver.add(BarcodeScanResult(
-                    message: code,
-                    isContinue: isContinue,
-                    type: barcode.type,
-                    raw: raw));
-              }
-            }
-            if (isContinue) {
-              _canProcess = true;
-              _isScanned = false;
-            }
-          }
-        },
+        widget.mode,
       );
       _customPaint = CustomPaint(painter: painter);
-    } else {
-      String text = 'Barcodes found: ${barcodes.length}\n\n';
+      
+      // Filter barcodes based on ROI if needed
+      List<Barcode> validBarcodes = [];
       for (final barcode in barcodes) {
-        text += 'Barcode: ${barcode.rawValue}\n\n';
-        if (!_receiver.isClosed) {
-          if (!_results.contains(barcode.rawValue)) {
-            _results.add(barcode.rawValue);
-            dynamic raw = barcode.value;
-            switch (barcode.type) {
-              case BarcodeType.wifi:
-                raw = barcode.value as BarcodeWifi;
-                break;
-              case BarcodeType.url:
-                raw = barcode.value as BarcodeUrl;
-                break;
-              case BarcodeType.contactInfo:
-                raw = barcode.value as BarcodeContactInfo;
-                break;
-              case BarcodeType.email:
-                raw = barcode.value as BarcodeEmail;
-                break;
-              case BarcodeType.phone:
-                raw = barcode.value as BarcodePhone;
-                break;
-              case BarcodeType.sms:
-                raw = barcode.value as BarcodeSMS;
-                break;
-              case BarcodeType.geoCoordinates:
-                raw = barcode.value as BarcodeGeoPoint;
-                break;
-              case BarcodeType.calendarEvent:
-                raw = barcode.value as BarcodeCalenderEvent;
-                break;
-              case BarcodeType.driverLicense:
-                raw = barcode.value as BarcodeDriverLicense;
-                break;
-              default:
-                raw = barcode.value;
-            }
-            _receiver.add(BarcodeScanResult(
-                message: barcode.rawValue!, isContinue: isContinue, type: barcode.type, raw: raw));
-            _countReceiver.add(BarcodeScanResult(
-                message: barcode.rawValue!, isContinue: isContinue, type: barcode.type, raw: raw));
+        if (useRoi) {
+          final double left = translateX(barcode.boundingBox.left, canvasSize, _imageSize!, _rotation!, _cameraLensDirection);
+          final double right = translateX(barcode.boundingBox.right, canvasSize, _imageSize!, _rotation!, _cameraLensDirection);
+          final double top = translateY(barcode.boundingBox.top, canvasSize, _imageSize!, _rotation!, _cameraLensDirection);
+          final double bottom = translateY(barcode.boundingBox.bottom, canvasSize, _imageSize!, _rotation!, _cameraLensDirection);
+
+          if (left >= roiLeft && right <= roiRight && top >= roiTop && bottom <= roiBottom) {
+            validBarcodes.add(barcode);
           }
+        } else {
+          validBarcodes.add(barcode);
         }
       }
-      _text = text;
+
+      _currentBarcodes = validBarcodes;
+
+      // Handle scan modes logic using validBarcodes
+      for (final barcode in validBarcodes) {
+        final String rawValue = barcode.rawValue ?? '';
+        final Map<String, dynamic> parsedData = GS1Parser.parse(rawValue);
+        final String gtin = parsedData['01'] ?? '';
+
+        switch (widget.mode) {
+          case ScanMode.single:
+            if (!_isFinished) {
+              setState(() => _isFinished = true);
+              _canProcess = false;
+              if (widget.onComplete != null) {
+                widget.onComplete!([parsedData]);
+              }
+            }
+            break;
+
+          case ScanMode.continuous:
+            if (!_scannedCodes.contains(rawValue)) {
+              _scannedCodes.add(rawValue);
+              if (widget.onComplete != null) {
+                widget.onComplete!([parsedData]);
+              }
+              Future.delayed(const Duration(seconds: 2), () {
+                _scannedCodes.remove(rawValue);
+              });
+            }
+            break;
+
+          case ScanMode.find:
+            if (widget.barcodeMapList.containsKey(gtin)) {
+              if (!_isFinished) {
+                setState(() => _isFinished = true);
+                _canProcess = false;
+                if (widget.onComplete != null) {
+                  widget.onComplete!([parsedData]);
+                }
+              }
+            }
+            break;
+
+          case ScanMode.multi:
+            if (!_scannedCodes.contains(rawValue)) {
+              _scannedCodes.add(rawValue);
+              _multiScanResults.add(parsedData);
+            }
+            break;
+        }
+      }
+    } else {
       _customPaint = null;
+      _currentBarcodes = [];
     }
+
     _isBusy = false;
     if (mounted) {
       setState(() {});
     }
   }
-
-  Uint8List _fastInvertColors(Uint8List bytes, InputImageMetadata? metadata) {
-    final inverted = Uint8List.fromList(bytes);
-    final int length;
-
-    // For YUV formats, we only need to invert the Y (Luminance) plane for barcode scanning
-    if (metadata != null &&
-        (metadata.format == InputImageFormat.nv21 ||
-            metadata.format == InputImageFormat.yuv_420_888 ||
-            metadata.format == InputImageFormat.yuv420)) {
-      length = metadata.size.width.toInt() * metadata.size.height.toInt();
-    } else {
-      length = bytes.length;
-    }
-
-    // Optimization: Use Uint64List to process 8 bytes at a time
-    final u64Length = length ~/ 8;
-    final u64Data = Uint64List.view(inverted.buffer, 0, u64Length);
-    for (int i = 0; i < u64Data.length; i++) {
-      u64Data[i] = ~u64Data[i];
-    }
-
-    // Handle remaining bytes
-    for (int i = u64Length * 8; i < length; i++) {
-      inverted[i] = 255 - inverted[i];
-    }
-
-    return inverted;
-  }
-}
-
-enum LangageScript{
-  latin,
-  chinese,
-  devanagiri,
-  japanese,
-  korean,
 }

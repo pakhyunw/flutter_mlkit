@@ -6,7 +6,6 @@ import 'package:flutter_mlkit/flutter_mlkit.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
-
   runApp(MyApp());
 }
 
@@ -15,138 +14,162 @@ class MyApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MaterialApp(
       debugShowCheckedModeBanner: false,
+      theme: ThemeData(primarySwatch: Colors.blue),
       home: Home(),
     );
   }
 }
 
-class Home extends StatelessWidget {
+class Home extends StatefulWidget {
+  @override
+  State<Home> createState() => _HomeState();
+}
 
-  String text = "";
-  final controller = StreamController<String>.broadcast();
+class _HomeState extends State<Home> {
+  String _lastScanResult = "No data";
 
-  void setText(value) {
-    controller.add(value);
+  // Dummy DB for Find Mode (Key: GTIN(01))
+  final Map<String, Map<String, dynamic>> _targetBarcodeDb = {
+    '8801234567890': {'name': 'Shin Ramyun', 'price': '1,200 KRW'},
+    '8809876543210': {'name': 'Coke 500ml', 'price': '2,000 KRW'},
+  };
+
+  void _openScanner(BuildContext context, ScanMode mode) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => BarcodeScannerView(
+          mode: mode,
+          barcodeMapList: _targetBarcodeDb,
+          onComplete: (results) {
+            setState(() {
+              _lastScanResult = results.map((r) => r.toString()).join('\n---\n');
+            });
+            if (mode != ScanMode.continuous) {
+               Navigator.pop(context);
+            }
+          },
+          overlayWidgetBuilder: (parsedData, isTarget) {
+            final gtin = parsedData['01'] ?? 'No GTIN';
+            final batch = parsedData['10'] ?? 'No Batch';
+            final expiry = parsedData['17'] ?? 'No Expiry';
+
+            // Custom UI based on mode and target status
+            Color bgColor = Colors.black87;
+            String statusText = "SCANNED";
+            IconData icon = Icons.check_circle_outline;
+
+            if (mode == ScanMode.find) {
+              bgColor = isTarget ? Colors.green.withOpacity(0.8) : Colors.red.withOpacity(0.8);
+              statusText = isTarget ? "✅ MATCHED" : "❌ MISMATCH";
+              icon = isTarget ? Icons.verified : Icons.error_outline;
+            }
+
+            return Container(
+              width: 200,
+              padding: const EdgeInsets.all(10),
+              decoration: BoxDecoration(
+                color: bgColor,
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: Colors.white24, width: 1),
+                boxShadow: [BoxShadow(color: Colors.black26, blurRadius: 4, offset: Offset(2, 2))],
+              ),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Icon(icon, color: Colors.white, size: 16),
+                      SizedBox(width: 5),
+                      Text(statusText, style: TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold)),
+                    ],
+                  ),
+                  Divider(color: Colors.white24),
+                  Text("GTIN: $gtin", style: TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.bold)),
+                  Text("LOT: $batch", style: TextStyle(color: Colors.white70, fontSize: 10)),
+                  Text("EXP: $expiry", style: TextStyle(color: Colors.amberAccent, fontSize: 10)),
+                  if (isTarget && _targetBarcodeDb.containsKey(gtin)) ...[
+                    SizedBox(height: 5),
+                    Text("Product: ${_targetBarcodeDb[gtin]!['name']}", style: TextStyle(color: Colors.cyanAccent, fontSize: 11)),
+                  ]
+                ],
+              ),
+            );
+          },
+        ),
+      ),
+    );
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: Text('Google ML Kit Demo App'),
-        centerTitle: true,
-        elevation: 0,
-      ),
-      body: SafeArea(
-        child: Center(
-          child: SingleChildScrollView(
-            child: Padding(
-              padding: EdgeInsets.symmetric(horizontal: 16),
-              child: Column(
-                children: [
-                  ElevatedButton(
-                      onPressed: () async {
-                        await FlutterMlkit.barcodeScan(context,(value)=>print(value.message), isContinue: true, );
-
-                      },
-                      child: Text('QR Scan')),
-                  ElevatedButton(
-                      onPressed: () {
-                        showDialog(
-                            context: context,
-                            builder: (BuildContext context) {
-                              return Dialog(
-                              key: UniqueKey(),
-                                child : SizedBox(
-                                    height: MediaQuery.of(context).size.height / 2,
-                                    width: MediaQuery.of(context).size.width * 0.9,
-                                    child: Center(
-                                      child: Column(
-                                        mainAxisAlignment: MainAxisAlignment.start,
-                                        children: <Widget>[
-                                          FlutterMlkit.scalableOCR(
-                                              paintboxCustom: Paint()
-                                                ..style = PaintingStyle.stroke
-                                                ..strokeWidth = 4.0
-                                                ..color = Colors.amberAccent,
-                                              boxHeight: MediaQuery.of(context).size.height / 4,
-                                              roiBoxSize: Size(800,400),
-                                              languageScript: LanguageScript.korean,
-                                              getRawData: (value) {
-                                                inspect(value);
-                                              },
-                                              getScannedText: (value) {
-                                                print(value);
-                                              }),
-                                          StreamBuilder<String>(
-                                            stream: controller.stream,
-                                            builder:
-                                                (BuildContext context, AsyncSnapshot<String> snapshot) {
-                                              return Result(
-                                                  text: snapshot.data != null ? snapshot.data! : "");
-                                            },
-                                          )
-                                        ],
-                                      ),
-                                    ))
-                            );
-                          }
-                        );
-                      },
-                      child: Text('OCR')),
-                ],
+      appBar: AppBar(title: Text('AR GS1 Scanner Demo')),
+      body: SingleChildScrollView(
+        child: Padding(
+          padding: EdgeInsets.all(16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              _buildModeButton(context, "Single Mode (단일 스캔)", ScanMode.single, Colors.blue),
+              _buildModeButton(context, "Continuous Mode (연속 스캔)", ScanMode.continuous, Colors.green),
+              _buildModeButton(context, "Find Mode (바코드 찾기)", ScanMode.find, Colors.orange),
+              _buildModeButton(context, "Multi Scan Mode (멀티 스캔)", ScanMode.multi, Colors.purple),
+              
+              SizedBox(height: 30),
+              Text("Last Scan Result:", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+              Container(
+                margin: EdgeInsets.only(top:10),
+                padding: EdgeInsets.all(12),
+                decoration: BoxDecoration(color: Colors.grey[200], borderRadius: BorderRadius.circular(8)),
+                child: Text(_lastScanResult, style: TextStyle(fontFamily: 'monospace', fontSize: 12)),
               ),
-            ),
+
+              SizedBox(height: 50),
+              Center(
+                child: ElevatedButton(
+                  onPressed: () {
+                    showDialog(
+                      context: context,
+                      builder: (context) => Dialog(
+                        child: Container(
+                          height: 400,
+                          child: FlutterMlkit.scalableOCR(
+                            getScannedText: (text) => print("OCR: $text"),
+                            languageScript: LanguageScript.korean,
+                          ),
+                        ),
+                      ),
+                    );
+                  },
+                  child: Text("OCR Scanner (Original)"),
+                ),
+              )
+            ],
           ),
         ),
       ),
     );
   }
-}
 
-class CustomCard extends StatelessWidget {
-  final String _label;
-  final Widget _viewPage;
-  final bool featureCompleted;
-
-  const CustomCard(this._label, this._viewPage, {this.featureCompleted = true});
-
-  @override
-  Widget build(BuildContext context) {
-    return Card(
-      elevation: 5,
-      margin: EdgeInsets.only(bottom: 10),
-      child: ListTile(
-        tileColor: Theme.of(context).primaryColor,
-        title: Text(
-          _label,
-          style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+  Widget _buildModeButton(BuildContext context, String label, ScanMode mode, Color color) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 8.0),
+      child: ElevatedButton(
+        style: ElevatedButton.styleFrom(
+          backgroundColor: color,
+          foregroundColor: Colors.white,
+          padding: EdgeInsets.symmetric(vertical: 16),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
         ),
-        onTap: () {
-          if (!featureCompleted) {
-            ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-                content:
-                    const Text('This feature has not been implemented yet')));
-          } else {
-            Navigator.push(
-                context, MaterialPageRoute(builder: (context) => _viewPage));
-          }
-        },
+        onPressed: () => _openScanner(context, mode),
+        child: Text(label, style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
       ),
     );
   }
 }
 
-class Result extends StatelessWidget {
-  const Result({
-    Key? key,
-    required this.text,
-  }) : super(key: key);
-
-  final String text;
-
-  @override
-  Widget build(BuildContext context) {
-    return Text("Readed text: $text");
-  }
+extension on EdgeInsets {
+  static EdgeInsets top(double value) => EdgeInsets.only(top: value);
 }

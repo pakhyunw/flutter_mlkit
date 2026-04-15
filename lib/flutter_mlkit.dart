@@ -8,8 +8,10 @@ import 'package:google_mlkit_barcode_scanning/google_mlkit_barcode_scanning.dart
 
 import 'ocr/flutter_scalable_ocr.dart';
 import 'vision_detector_views/barcode_scanner_view.dart' hide LangageScript;
+export 'vision_detector_views/barcode_scanner_view.dart' show ScanMode, BarcodeScannerView;
 
 class FlutterMlkit {
+  /// Legacy scanner support (updated for the new view architecture)
   static Future<void> barcodeScan(
     context,
     Function(BarcodeScanResult) result, {
@@ -20,32 +22,40 @@ class FlutterMlkit {
   }) async {
     try {
       await Future.delayed(const Duration(milliseconds: 500));
-      final StreamController<BarcodeScanResult> receiver = StreamController();
-      late BarcodeScannerView barcode = BarcodeScannerView(
-        receiver: receiver,
-        isContinue: isContinue,
-        codeScanString: codeScanString,
-        singleScanString: singleScanString,
-        continuousScanString: continuousScanString,
-      );
-      var scannedText = '';
-      Future.delayed(const Duration(milliseconds: 1000), () {
-        receiver.stream.listen((BarcodeScanResult resultData) {
-          if (!resultData.isContinue) {
-            receiver.close();
-            result(resultData);
-            Navigator.pop(context);
-          } else {
-            result(resultData);
-          }
-        });
-      });
+      
       await showDialog(
           context: context,
           builder: (BuildContext context) {
-            return barcode;
+            return BarcodeScannerView(
+              mode: isContinue ? ScanMode.continuous : ScanMode.single,
+              overlayWidgetBuilder: (parsedData, isTarget) {
+                return Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: Colors.black.withOpacity(0.7),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Text(
+                    parsedData.entries.map((e) => '${e.key}: ${e.value}').join('\n'),
+                    style: const TextStyle(color: Colors.white, fontSize: 10),
+                  ),
+                );
+              },
+              onComplete: (results) {
+                for (var r in results) {
+                   result(BarcodeScanResult(
+                     message: r['01'] ?? r.values.first.toString(),
+                     type: BarcodeType.unknown, // Simplified for legacy support
+                     raw: r,
+                     isContinue: isContinue,
+                   ));
+                }
+                if (!isContinue) {
+                  Navigator.pop(context);
+                }
+              },
+            );
           });
-      receiver.close();
     } catch (e) {
       debugPrint(e.toString());
     }
