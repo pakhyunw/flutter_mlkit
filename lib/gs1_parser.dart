@@ -5,6 +5,7 @@ class GS1Parser {
 
   // GS1 Application Identifiers (AI) mapping: AI -> {name, length, fixed}
   static const Map<String, _GS1AIDef> _gs1AIs = {
+    '00': _GS1AIDef('SSCC', 18, true),
     '01': _GS1AIDef('GTIN', 14, true),
     '10': _GS1AIDef('BATCH/LOT', 20, false),
     '11': _GS1AIDef('PROD DATE', 6, true),
