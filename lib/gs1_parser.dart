@@ -37,12 +37,19 @@ class GS1Parser {
     '99': _GS1AIDef('INTERNAL', 30, false),
   };
 
-  /// Parses a GS1 barcode string into a map of AI and their values.
+  /// Parses a barcode string into a map of AI and their values.
+  /// If it's a raw GTIN (8, 12, 13, 14 digits), it treats it as AI '01'.
   static Map<String, dynamic> parse(String barcode) {
     Map<String, dynamic> results = {};
-    String data = barcode;
+    String data = barcode.trim();
 
-    // 1. Remove Symbology Identifiers (e.g., ]C1, ]d2) and leading GS (ASCII 29)
+    // 1. Check if it's a raw GTIN first (No AI prefixes, just digits)
+    if (_isRawGTIN(data)) {
+      results['01'] = _normalizeGTIN(data);
+      return results;
+    }
+
+    // 2. Remove Symbology Identifiers (e.g., ]C1, ]d2) and leading GS (ASCII 29)
     if (data.startsWith(']C1')) data = data.substring(3);
     if (data.startsWith(']d2')) data = data.substring(3);
     while (data.startsWith(gs)) {
@@ -54,7 +61,7 @@ class GS1Parser {
       String? matchedAI;
       _GS1AIDef? aiDef;
 
-      // 2. Dynamic AI matching: Try 4 digits -> 3 digits -> 2 digits
+      // Dynamic AI matching: Try 4 digits -> 3 digits -> 2 digits
       for (int aiLen = 4; aiLen >= 2; aiLen--) {
         if (i + aiLen <= data.length) {
           String aiCandidate = data.substring(i, i + aiLen);
@@ -63,7 +70,6 @@ class GS1Parser {
             aiDef = _gs1AIs[aiCandidate];
             break;
           }
-          // Special case for AI 310n, 330n etc (last digit is decimal position)
           if (aiLen == 4) {
              String aiPrefix = data.substring(i, i + 3);
              if (_gs1AIs.containsKey(aiPrefix)) {
@@ -76,13 +82,16 @@ class GS1Parser {
       }
 
       if (matchedAI == null || aiDef == null) {
-        // Unknown AI, stop parsing or skip
+        // If we failed to parse as GS1-128 but we have some digits, 
+        // let's see if the remaining part is a raw GTIN as a last resort
+        if (results.isEmpty && _isRawGTIN(data)) {
+           results['01'] = _normalizeGTIN(data);
+        }
         break;
       }
 
       i += matchedAI.length;
 
-      // 3. Variable/Fixed length processing
       String value;
       if (aiDef.fixed) {
         int end = i + aiDef.length;
@@ -98,21 +107,34 @@ class GS1Parser {
           value = data.substring(i, gsIndex);
           i = gsIndex + 1;
         }
-        // Trim value if it exceeds max allowed length for the AI
         if (value.length > aiDef.length) {
           value = value.substring(0, aiDef.length);
         }
       }
 
-      // 4. Date conversion (YYMMDD -> YYYY-MM-DD)
       if (['11', '13', '15', '17'].contains(matchedAI)) {
         value = _formatGS1Date(value);
+      } else if (matchedAI == '01') {
+        value = _normalizeGTIN(value);
       }
 
       results[matchedAI] = value;
     }
 
     return results;
+  }
+
+  static bool _isRawGTIN(String data) {
+    if (data.isEmpty) return false;
+    final RegExp gtinRegex = RegExp(r'^\d{8,14}$');
+    if (!gtinRegex.hasMatch(data)) return false;
+    // Check common GTIN lengths: 8 (EAN-8), 12 (UPC-A), 13 (EAN-13), 14 (ITF-14)
+    return [8, 12, 13, 14].contains(data.length);
+  }
+
+  static String _normalizeGTIN(String gtin) {
+    // Standardize to 14 digits by padding with leading zeros
+    return gtin.padLeft(14, '0');
   }
 
   /// Converts YYMMDD to YYYY-MM-DD based on century logic.
