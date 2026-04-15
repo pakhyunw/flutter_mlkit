@@ -29,9 +29,9 @@ class _HomeState extends State<Home> {
   String _lastScanResult = "No data";
 
   // Dummy DB for Find Mode (Key: GTIN(01))
-  final Map<String, Map<String, dynamic>> _targetBarcodeDb = {
-    '8801234567890': {'name': 'Shin Ramyun', 'price': '1,200 KRW'},
-    '8809876543210': {'name': 'Coke 500ml', 'price': '2,000 KRW'},
+  final Map<int, Map<String, dynamic>> _targetBarcodeDb = {
+    8806489022715: {'name': 'Shin Ramyun', 'price': '1,200 KRW'},
+    8806555000326: {'name': 'Coke 500ml', 'price': '2,000 KRW'},
   };
 
   void _openScanner(BuildContext context, ScanMode mode) {
@@ -65,6 +65,8 @@ class _HomeState extends State<Home> {
               icon = isTarget ? Icons.verified : Icons.error_outline;
             }
 
+            int gtinInt = int.parse(gtin);
+
             return Container(
               width: 200,
               padding: const EdgeInsets.all(10),
@@ -89,9 +91,9 @@ class _HomeState extends State<Home> {
                   Text("GTIN: $gtin", style: TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.bold)),
                   Text("LOT: $batch", style: TextStyle(color: Colors.white70, fontSize: 10)),
                   Text("EXP: $expiry", style: TextStyle(color: Colors.amberAccent, fontSize: 10)),
-                  if (isTarget && _targetBarcodeDb.containsKey(gtin)) ...[
+                  if (isTarget || _targetBarcodeDb.containsKey(gtinInt)) ...[
                     SizedBox(height: 5),
-                    Text("Product: ${_targetBarcodeDb[gtin]!['name']}", style: TextStyle(color: Colors.cyanAccent, fontSize: 11)),
+                    Text("Product: ${_targetBarcodeDb[gtinInt]!['name']}", style: TextStyle(color: Colors.cyanAccent, fontSize: 11)),
                   ]
                 ],
               ),

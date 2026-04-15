@@ -13,7 +13,7 @@ enum ScanMode { single, continuous, find, multi }
 
 class BarcodeScannerView extends StatefulWidget {
   final ScanMode mode;
-  final Map<String, Map<String, dynamic>> barcodeMapList;
+  final Map<int, Map<String, dynamic>> barcodeMapList;
   final Widget Function(Map<String, dynamic> parsedData, bool isTarget) overlayWidgetBuilder;
   final Function(List<Map<String, dynamic>> results)? onComplete;
 
@@ -63,7 +63,7 @@ class BarcodeScannerViewState extends State<BarcodeScannerView> {
             title: 'Barcode Scanner',
             customPaint: _customPaint,
             receiver: StreamController(), // Legacy
-            isContinue: widget.mode == ScanMode.continuous || widget.mode == ScanMode.multi,
+            isContinue: widget.mode == ScanMode.continuous,
             onImage: _processImage,
             initialCameraLensDirection: _cameraLensDirection,
             onCameraLensDirectionChanged: (value) => _cameraLensDirection = value,
