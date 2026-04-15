@@ -44,7 +44,6 @@ class BarcodeScannerViewState extends State<BarcodeScannerView> {
   InputImageRotation? _rotation;
   DateTime? _lastValidTime;
 
-  // OCR 통합 모드용 스티키 타겟
   Map<String, dynamic>? _stickyOcrTarget;
   Rect? _stickyBarcodeRect;
   Map<String, dynamic> _persistentOcrData = {};
@@ -85,7 +84,7 @@ class BarcodeScannerViewState extends State<BarcodeScannerView> {
             initialCameraLensDirection: _cameraLensDirection,
             onCameraLensDirectionChanged: (value) => _cameraLensDirection = value,
           ),
-          _buildOverlayWidgets(context), // 항상 렌더링 시도
+          _buildOverlayWidgets(context),
           if (widget.mode == ScanMode.multi && !_isFinished) _buildMultiScanButton(),
         ],
       ),
@@ -94,67 +93,38 @@ class BarcodeScannerViewState extends State<BarcodeScannerView> {
 
   Widget _buildOverlayWidgets(BuildContext context) {
     if (_imageSize == null || _rotation == null || _isFinished) return const SizedBox.shrink();
-
     final Size canvasSize = MediaQuery.of(context).size;
     List<Widget> overlays = [];
 
-    // 1. 현재 인식 중인 바코드들 UI 생성
+    // 1. 현재 바코드 UI
     for (int i = 0; i < _currentBarcodes.length; i++) {
       final barcode = _currentBarcodes[i];
-      Map<String, dynamic> parsedData = (i < _currentParsedResults.length) 
-          ? Map.from(_currentParsedResults[i]) 
-          : GS1Parser.parse(barcode.rawValue ?? '');
-
-      // OCR 정보가 있으면 보충
+      Map<String, dynamic> parsedData = (i < _currentParsedResults.length) ? Map.from(_currentParsedResults[i]) : GS1Parser.parse(barcode.rawValue ?? '');
       if (widget.mode == ScanMode.ocr || widget.mode == ScanMode.ocrOnly) {
          parsedData['10'] ??= _persistentOcrData['10'];
          parsedData['17'] ??= _persistentOcrData['17'];
       }
-
       final double left = translateX(barcode.boundingBox.left, canvasSize, _imageSize!, _rotation!, _cameraLensDirection);
       final double top = translateY(barcode.boundingBox.top, canvasSize, _imageSize!, _rotation!, _cameraLensDirection);
-
-      overlays.add(Positioned(
-        left: left,
-        top: top - 130, // 바코드 위쪽 적절한 위치
-        child: widget.overlayWidgetBuilder(parsedData, widget.mode == ScanMode.find && _normalizedBarcodeMap.containsKey(parsedData['01'])),
-      ));
+      overlays.add(Positioned(left: left, top: top - 130, child: widget.overlayWidgetBuilder(parsedData, widget.mode == ScanMode.find && _normalizedBarcodeMap.containsKey(parsedData['01']))));
     }
 
-    // 2. 바코드는 놓쳤지만 스티키 데이터가 살아있는 경우 (통합 모드 전용)
+    // 2. 스티키 타겟 UI
     if (overlays.isEmpty && widget.mode == ScanMode.ocr && _stickyOcrTarget != null && _stickyBarcodeRect != null) {
-       // 인식 유효 시간 체크 (800ms)
-       if (_lastValidTime != null && DateTime.now().difference(_lastValidTime!).inMilliseconds < 800) {
+       if (_lastValidTime != null && DateTime.now().difference(_lastValidTime!).inMilliseconds < 1000) {
           final Map<String, dynamic> data = Map.from(_stickyOcrTarget!);
           data['10'] ??= _persistentOcrData['10'];
           data['17'] ??= _persistentOcrData['17'];
-
           final double left = translateX(_stickyBarcodeRect!.left, canvasSize, _imageSize!, _rotation!, _cameraLensDirection);
           final double top = translateY(_stickyBarcodeRect!.top, canvasSize, _imageSize!, _rotation!, _cameraLensDirection);
-
-          overlays.add(Positioned(
-            left: left,
-            top: top - 130,
-            child: widget.overlayWidgetBuilder(data, false),
-          ));
+          overlays.add(Positioned(left: left, top: top - 130, child: widget.overlayWidgetBuilder(data, false)));
        }
     }
-
     return Stack(children: overlays);
   }
 
   Widget _buildMultiScanButton() {
-    return Positioned(
-      bottom: 100, left: 20, right: 20,
-      child: ElevatedButton(
-        style: ElevatedButton.styleFrom(backgroundColor: Colors.blue, padding: const EdgeInsets.symmetric(vertical: 15), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(30))),
-        onPressed: () {
-          setState(() => _isFinished = true);
-          if (widget.onComplete != null) widget.onComplete!(_multiScanResults);
-        },
-        child: Text('${_multiScanResults.length}개 스캔 완료', style: const TextStyle(fontSize: 18, color: Colors.white, fontWeight: FontWeight.bold)),
-      ),
-    );
+    return Positioned(bottom: 100, left: 20, right: 20, child: ElevatedButton(style: ElevatedButton.styleFrom(backgroundColor: Colors.blue, padding: const EdgeInsets.symmetric(vertical: 15), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(30))), onPressed: () { setState(() => _isFinished = true); if (widget.onComplete != null) widget.onComplete!(_multiScanResults); }, child: Text('${_multiScanResults.length}개 스캔 완료', style: const TextStyle(fontSize: 18, color: Colors.white, fontWeight: FontWeight.bold))));
   }
 
   Future<void> _processImage(InputImage inputImage, bool isContinue) async {
@@ -162,20 +132,17 @@ class BarcodeScannerViewState extends State<BarcodeScannerView> {
     _isBusy = true;
 
     try {
-      final metadataSize = inputImage.metadata?.size;
-      final metadataRotation = inputImage.metadata?.rotation;
-      if (metadataSize == null || metadataRotation == null) return;
-
-      _imageSize = metadataSize;
-      _rotation = metadataRotation;
+      final meta = inputImage.metadata;
+      if (meta == null) return;
+      _imageSize = meta.size;
+      _rotation = meta.rotation;
 
       List<Barcode> barcodes = [];
       if (widget.mode != ScanMode.ocrOnly) {
         barcodes = await _barcodeScanner.processImage(inputImage);
         if (barcodes.isEmpty && inputImage.bytes != null) {
-          final invertedBytes = _fastInvertColors(inputImage.bytes!, inputImage.metadata);
-          final invertedInputImage = InputImage.fromBytes(bytes: invertedBytes, metadata: inputImage.metadata!);
-          barcodes = await _barcodeScanner.processImage(invertedInputImage);
+          final inverted = _fastInvertColors(inputImage.bytes!, meta);
+          barcodes = await _barcodeScanner.processImage(InputImage.fromBytes(bytes: inverted, metadata: meta));
         }
       }
 
@@ -187,44 +154,27 @@ class BarcodeScannerViewState extends State<BarcodeScannerView> {
       final double roiRight = roiLeft + roiBoxSize;
       final double roiBottom = roiTop + roiBoxSize;
 
-      final bool useRoi = widget.mode != ScanMode.find && widget.mode != ScanMode.multi;
-
-      // 1. OCR 엔진 분석
+      // --- 공간 레이아웃 OCR 분석 ---
       if (widget.mode == ScanMode.ocr || widget.mode == ScanMode.ocrOnly) {
         final RecognizedText recognizedText = await _textRecognizer.processImage(inputImage);
-        for (TextBlock block in recognizedText.blocks) {
-          for (TextLine line in block.lines) {
-            final double lLeft = translateX(line.boundingBox.left, canvasSize, metadataSize, metadataRotation, _cameraLensDirection);
-            final double lTop = translateY(line.boundingBox.top, canvasSize, metadataSize, metadataRotation, _cameraLensDirection);
-            if (lLeft >= roiLeft - 50 && lLeft <= roiRight + 50 && lTop >= roiTop - 50 && lTop <= roiBottom + 50) {
-               Map<String, dynamic> ocrInfo = _extractInformationFromText(line.text);
-               if (ocrInfo['pNumber'] != null) _persistentOcrData['10'] = ocrInfo['pNumber'];
-               if (ocrInfo['expDate'] != null) _persistentOcrData['17'] = ocrInfo['expDate'];
-            }
-          }
-        }
+        _analyzeSpatialLayout(recognizedText, canvasSize, meta, roiLeft, roiRight, roiTop, roiBottom);
       }
 
       List<Barcode> validBarcodes = [];
       List<Map<String, dynamic>> parsedResults = [];
 
-      // 2. 바코드 처리
       if (barcodes.isNotEmpty) {
         for (final barcode in barcodes) {
-          final double left = translateX(barcode.boundingBox.left, canvasSize, metadataSize, metadataRotation, _cameraLensDirection);
-          final double top = translateY(barcode.boundingBox.top, canvasSize, metadataSize, metadataRotation, _cameraLensDirection);
-          final double right = translateX(barcode.boundingBox.right, canvasSize, metadataSize, metadataRotation, _cameraLensDirection);
-          final double bottom = translateY(barcode.boundingBox.bottom, canvasSize, metadataSize, metadataRotation, _cameraLensDirection);
-          
-          bool isInside = !useRoi || (left >= roiLeft && right <= roiRight && top >= roiTop && bottom <= roiBottom);
+          final double left = translateX(barcode.boundingBox.left, canvasSize, meta.size, meta.rotation, _cameraLensDirection);
+          final double top = translateY(barcode.boundingBox.top, canvasSize, meta.size, meta.rotation, _cameraLensDirection);
+          final double right = translateX(barcode.boundingBox.right, canvasSize, meta.size, meta.rotation, _cameraLensDirection);
+          final double bottom = translateY(barcode.boundingBox.bottom, canvasSize, meta.size, meta.rotation, _cameraLensDirection);
+          bool isInside = (widget.mode == ScanMode.find || widget.mode == ScanMode.multi) || (left >= roiLeft && right <= roiRight && top >= roiTop && bottom <= roiBottom);
 
           if (isInside) {
             validBarcodes.add(barcode);
             Map<String, dynamic> parsed = GS1Parser.parse(barcode.rawValue ?? '');
-            if (widget.mode == ScanMode.ocr && parsed['01'] != null) {
-               _stickyOcrTarget = parsed;
-               _stickyBarcodeRect = barcode.boundingBox;
-            }
+            if (widget.mode == ScanMode.ocr && parsed['01'] != null) { _stickyOcrTarget = parsed; _stickyBarcodeRect = barcode.boundingBox; }
             parsed['10'] ??= _persistentOcrData['10'];
             parsed['17'] ??= _persistentOcrData['17'];
             parsedResults.add(parsed);
@@ -232,69 +182,96 @@ class BarcodeScannerViewState extends State<BarcodeScannerView> {
         }
       } else if (widget.mode == ScanMode.ocr || widget.mode == ScanMode.ocrOnly) {
         if (_persistentOcrData['10'] != null || _persistentOcrData['17'] != null) {
-           final dummyBarcode = Barcode(
-             boundingBox: Rect.fromLTWH(
-               translateYInverse(roiTop + 100, metadataRotation, canvasSize, metadataSize), 
-               translateXInverse(roiLeft + 100, metadataRotation, canvasSize, metadataSize), 
-               50, 50
-             ),
-             rawValue: 'OCR_ONLY', displayValue: 'OCR', type: BarcodeType.unknown, format: BarcodeFormat.unknown, cornerPoints: [], rawBytes: Uint8List(0), value: null,
-           );
-           validBarcodes.add(dummyBarcode);
+           final dummy = Barcode(boundingBox: Rect.fromLTWH(translateYInverse(roiTop + 100, meta.rotation, canvasSize, meta.size), translateXInverse(roiLeft + 100, meta.rotation, canvasSize, meta.size), 50, 50), rawValue: 'OCR_ONLY', displayValue: 'OCR', type: BarcodeType.unknown, format: BarcodeFormat.unknown, cornerPoints: [], rawBytes: Uint8List(0), value: null);
+           validBarcodes.add(dummy);
            parsedResults.add(Map.from(_persistentOcrData));
         }
       }
 
       _currentBarcodes = validBarcodes;
       _currentParsedResults = parsedResults;
-      
-      if (validBarcodes.isNotEmpty || _stickyOcrTarget != null) {
-        _lastValidTime = DateTime.now();
-      } else {
-        if (_lastValidTime != null && DateTime.now().difference(_lastValidTime!).inMilliseconds > 1000) {
-           _stickyOcrTarget = null;
-           _stickyBarcodeRect = null;
-           _persistentOcrData = {};
-        }
-      }
+      if (validBarcodes.isNotEmpty || _stickyOcrTarget != null) _lastValidTime = DateTime.now();
+      else if (_lastValidTime != null && DateTime.now().difference(_lastValidTime!).inMilliseconds > 1500) { _stickyOcrTarget = null; _persistentOcrData = {}; }
 
-      _customPaint = CustomPaint(painter: BarcodeDetectorPainter(validBarcodes, metadataSize, metadataRotation, _cameraLensDirection, widget.mode));
+      _customPaint = CustomPaint(painter: BarcodeDetectorPainter(validBarcodes, meta.size, meta.rotation, _cameraLensDirection, widget.mode));
 
       for (int i = 0; i < validBarcodes.length; i++) {
         final parsedData = parsedResults[i];
         bool isComplete = false;
         switch (widget.mode) {
           case ScanMode.single: isComplete = true; break;
-          case ScanMode.ocr: isComplete = parsedData['01'] != null && parsedData['10'] != null && parsedData['17'] != null; break;
-          case ScanMode.ocrOnly: isComplete = parsedData['10'] != null && parsedData['17'] != null; break;
+          case ScanMode.ocr: isComplete = (parsedData['01'] != null && parsedData['10'] != null && parsedData['17'] != null); break;
+          case ScanMode.ocrOnly: isComplete = (parsedData['10'] != null && parsedData['17'] != null); break;
           case ScanMode.continuous:
             final String raw = validBarcodes[i].rawValue ?? '';
-            if (!_scannedCodes.contains(raw)) {
-              _scannedCodes.add(raw);
-              if (widget.onComplete != null) widget.onComplete!([parsedData]);
-              Future.delayed(const Duration(seconds: 2), () => _scannedCodes.remove(raw));
-            }
+            if (!_scannedCodes.contains(raw)) { _scannedCodes.add(raw); if (widget.onComplete != null) widget.onComplete!([parsedData]); Future.delayed(const Duration(seconds: 2), () => _scannedCodes.remove(raw)); }
             break;
           default: break;
         }
-        if (isComplete && !_isFinished) {
-          setState(() => _isFinished = true);
-          _canProcess = false;
-          if (widget.onComplete != null) widget.onComplete!([parsedData]);
+        if (isComplete && !_isFinished) { setState(() => _isFinished = true); _canProcess = false; if (widget.onComplete != null) widget.onComplete!([parsedData]); }
+      }
+    } catch (e) { debugPrint("Process Error: $e"); } finally { _isBusy = false; if (mounted) setState(() {}); }
+  }
+
+  // --- 공간 레이아웃 분석 엔진 ---
+  void _analyzeSpatialLayout(RecognizedText recognizedText, Size canvasSize, InputImageMetadata meta, double roiLeft, double roiRight, double roiTop, double roiBottom) {
+    final List<TextLine> allLines = [];
+    for (TextBlock block in recognizedText.blocks) {
+      for (TextLine line in block.lines) {
+        final double lLeft = translateX(line.boundingBox.left, canvasSize, meta.size, meta.rotation, _cameraLensDirection);
+        final double lTop = translateY(line.boundingBox.top, canvasSize, meta.size, meta.rotation, _cameraLensDirection);
+        // ROI 근처 라인만 필터링
+        if (lLeft >= roiLeft - 100 && lLeft <= roiRight + 100 && lTop >= roiTop - 100 && lTop <= roiBottom + 100) {
+          allLines.add(line);
         }
       }
-    } catch (e) {
-      debugPrint("Process Error: $e");
-    } finally {
-      _isBusy = false;
-      if (mounted) setState(() {});
     }
+
+    final labels = ['LOT', 'L/N', 'BN', 'B/N', 'BATCH', '제조', '로트', '제조번호'];
+    
+    for (var line in allLines) {
+      String text = line.text.toUpperCase();
+      
+      // 1. 유효기한(날짜) 우선 추출
+      Map<String, dynamic> info = _extractInformationFromText(line.text);
+      if (info['expDate'] != null) _persistentOcrData['17'] = info['expDate'];
+      if (info['pNumber'] != null) _persistentOcrData['10'] = info['pNumber'];
+
+      // 2. 제조번호 라벨 기반 공간 분석
+      for (var label in labels) {
+        if (text.contains(label)) {
+          // 라벨 근처의 값 탐색 (같은 라인 뒤쪽)
+          final regex = RegExp('$label\\s*[:.\\-]?\\s*([A-Z0-9]{3,})');
+          final match = regex.firstMatch(text);
+          if (match != null) {
+            _persistentOcrData['10'] = match.group(1);
+          } else {
+            // 같은 라인에 없으면 바로 아래 라인(Vertical) 탐색
+            for (var otherLine in allLines) {
+              if (otherLine == line) continue;
+              double distY = (otherLine.boundingBox.top - line.boundingBox.bottom).abs();
+              double distX = (otherLine.boundingBox.left - line.boundingBox.left).abs();
+              // 물리적으로 아래에 가깝게 붙어있는 경우
+              if (distY < 50 && distX < 100) {
+                String candidate = otherLine.text.replaceAll(RegExp(r'[^A-Z0-9]'), '');
+                if (candidate.length >= 3 && !_isDate(candidate)) {
+                  _persistentOcrData['10'] = candidate;
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+
+  bool _isDate(String s) {
+    return RegExp(r'\d{6,8}').hasMatch(s) && (s.contains('202') || s.startsWith('2'));
   }
 
   Uint8List _fastInvertColors(Uint8List bytes, InputImageMetadata? metadata) {
     final inverted = Uint8List.fromList(bytes);
-    final int length = (metadata != null && (metadata.format == InputImageFormat.nv21 || metadata.format == InputImageFormat.yuv_420_888 || metadata.format == InputImageFormat.yuv420))
-        ? metadata.size.width.toInt() * metadata.size.height.toInt() : bytes.length;
+    final int length = (metadata != null && (metadata.format == InputImageFormat.nv21 || metadata.format == InputImageFormat.yuv_420_888 || metadata.format == InputImageFormat.yuv420)) ? metadata.size.width.toInt() * metadata.size.height.toInt() : bytes.length;
     final u64Length = length ~/ 8;
     final u64Data = Uint64List.view(inverted.buffer, 0, u64Length);
     for (int i = 0; i < u64Data.length; i++) u64Data[i] = ~u64Data[i];
@@ -309,10 +286,7 @@ class BarcodeScannerViewState extends State<BarcodeScannerView> {
       String onlyDigits = cleanText.replaceAll(RegExp(r'\D'), '');
       if (onlyDigits.length >= 6) {
         String? extractedDate = _tryParseDate(onlyDigits);
-        if (extractedDate != null) {
-          body['expDate'] = extractedDate;
-          body['pNumber'] ??= onlyDigits.replaceFirst(onlyDigits.substring(onlyDigits.length - 6), '').replaceAll(' ', '');
-        }
+        if (extractedDate != null) body['expDate'] = extractedDate;
       }
     }
     return body;
@@ -321,29 +295,18 @@ class BarcodeScannerViewState extends State<BarcodeScannerView> {
   String? _tryParseDate(String digits) {
     if (digits.length >= 8) {
       String sub = digits.substring(digits.length - 8);
-      try {
-        DateTime dt = DateTime.parse('${sub.substring(0, 4)}-${sub.substring(4, 6)}-${sub.substring(6, 8)}');
-        if (dt.year >= 2020 && dt.year <= 2045) return dt.toIso8601String().substring(0, 10);
-      } catch (_) {}
+      try { DateTime dt = DateTime.parse('${sub.substring(0, 4)}-${sub.substring(4, 6)}-${sub.substring(6, 8)}'); if (dt.year >= 2020 && dt.year <= 2045) return dt.toIso8601String().substring(0, 10); } catch (_) {}
     }
     if (digits.length >= 6) {
       String sub = digits.substring(digits.length - 6);
-      try {
-        DateTime dt = DateTime.parse('20${sub.substring(0, 2)}-${sub.substring(2, 4)}-${sub.substring(4, 6)}');
-        return dt.toIso8601String().substring(0, 10);
-      } catch (_) {}
+      try { DateTime dt = DateTime.parse('20${sub.substring(0, 2)}-${sub.substring(2, 4)}-${sub.substring(4, 6)}'); return dt.toIso8601String().substring(0, 10); } catch (_) {}
     }
     return null;
   }
 
   Map<String, dynamic> _extractWithPatterns(String data) {
     String patternData = data.replaceAll(' ', '.');
-    List<RegExp> patterns = [
-      RegExp(r'([A-Z0-9]{4,})\.?(\d{4}\.\d{2}\.\d{2})'),
-      RegExp(r'(\d{4}\.\d{2}\.\d{2})\.?([A-Z0-9]{4,})'),
-      RegExp(r'(\d{2}\.\d{2}\.\d{2})\.?([A-Z0-9]{4,})'),
-      RegExp(r'([A-Z0-9]{4,})\.?(\d{2}\.\d{2}\.\d{2})'),
-    ];
+    List<RegExp> patterns = [RegExp(r'([A-Z0-9]{4,})\.?(\d{4}\.\d{2}\.\d{2})'), RegExp(r'(\d{4}\.\d{2}\.\d{2})\.?([A-Z0-9]{4,})'), RegExp(r'(\d{2}\.\d{2}\.\d{2})\.?([A-Z0-9]{4,})'), RegExp(r'([A-Z0-9]{4,})\.?(\d{2}\.\d{2}\.\d{2})')];
     Map<String, dynamic> body = {'pNumber': null, 'expDate': null};
     RegExp d4 = RegExp(r'(\d{4})\.(\d{2})\.(\d{2})');
     RegExp d2 = RegExp(r'(\d{2})\.(\d{2})\.(\d{2})');
