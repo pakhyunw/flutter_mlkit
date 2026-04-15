@@ -57,9 +57,9 @@ class TextRecognizerPainter extends CustomPainter {
 
     final Paint background = Paint()..color = Colors.amberAccent;
 
-    // ROI 박스 크기 계산
-    final double roiBoxWidth = roiBoxSize!.width / 2;
-    final double roiBoxHeight = roiBoxSize!.height / 2;
+    final Size currentRoiSize = roiBoxSize ?? const Size(800, 400);
+    final double roiBoxWidth = currentRoiSize.width / 2;
+    final double roiBoxHeight = currentRoiSize.height / 2;
 
     final double boxLeft = (size.width - roiBoxWidth) / 2;
     final double boxTop = (size.height - roiBoxHeight) / 2;

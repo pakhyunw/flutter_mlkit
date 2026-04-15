@@ -50,3 +50,34 @@ double translateY(
       return y * canvasSize.height / imageSize.height;
   }
 }
+
+double translateXInverse(
+  double x,
+  InputImageRotation rotation,
+  Size canvasSize,
+  Size imageSize,
+) {
+  switch (rotation) {
+    case InputImageRotation.rotation90deg:
+      return x * (Platform.isIOS ? imageSize.width : imageSize.height) / canvasSize.width;
+    case InputImageRotation.rotation270deg:
+      return (canvasSize.width - x) * (Platform.isIOS ? imageSize.width : imageSize.height) / canvasSize.width;
+    default:
+      return x * imageSize.width / canvasSize.width;
+  }
+}
+
+double translateYInverse(
+  double y,
+  InputImageRotation rotation,
+  Size canvasSize,
+  Size imageSize,
+) {
+  switch (rotation) {
+    case InputImageRotation.rotation90deg:
+    case InputImageRotation.rotation270deg:
+      return y * (Platform.isIOS ? imageSize.height : imageSize.width) / canvasSize.height;
+    default:
+      return y * imageSize.height / canvasSize.height;
+  }
+}

@@ -30,7 +30,7 @@ class BarcodeDetectorPainter extends CustomPainter {
     final double roiRight = roiLeft + roiBoxSize;
     final double roiBottom = roiTop + roiBoxSize;
 
-    final bool showRoi = mode == ScanMode.single || mode == ScanMode.continuous;
+    final bool showRoi = mode == ScanMode.single || mode == ScanMode.continuous || mode == ScanMode.ocr || mode == ScanMode.ocrOnly;
 
     if (showRoi) {
       final Paint roiPaint = Paint()

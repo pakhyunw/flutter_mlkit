@@ -145,7 +145,13 @@ class ScalableOCRState extends State<ScalableOCR> {
                       height: !isLandscape
                           ? _controller!.value.previewSize!.width
                           : _controller!.value.previewSize!.height,
-                      child: CameraPreview(cameraController, child: customPaint),
+                      child: Stack(
+                        fit: StackFit.expand,
+                        children: [
+                          CameraPreview(cameraController),
+                          if (customPaint != null) customPaint!,
+                        ],
+                      ),
                     ),
                   ),
                 ),
